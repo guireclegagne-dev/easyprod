@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Opérations — Écran 3 seul</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 12px 18px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  color: white;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  }
+  .back-btn:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+  }
+
+    /* Palette proche de l'écran 1 pour cohérence visuelle */
+    .screen-operations {
+      background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
+      color: white;
+    }
+
+    h1 {
+      font-size: 2.2em;
+      margin-bottom: 40px;
+      text-align: center;
+      font-weight: 300;
+    }
+
+    .operations-list {
+      width: 100%;
+      max-width: 440px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .operation-btn {
+      width: 100%;
+      padding: 20px;
+      margin: 10px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      color: white;
+      font-size: 1.15em;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      min-height: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .operation-btn:hover,
+    .operation-btn:active,
+    .operation-btn.selected {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.6);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .op-subtext {
+      font-size: 0.85em;
+      opacity: 0.9;
+      margin-top: 6px;
+    }
+
+    .hidden { display: none !important; }
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 1.2em;
+      z-index: 1001;
+    }
+    .loading i { margin-right: 10px; animation: spin 1s linear infinite; }
+    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+    @media (max-width: 480px) {
+      .screen { padding: 15px; }
+    }
+  </style>
+  <script src="config.js"></script>
+</head>
+<body>
+  <!-- Écran 3 uniquement : Liste des opérations -->
+  <div class="screen screen-operations" id="operationsScreen">
+    <button class="back-btn" onclick="window.location.href='ecran-2-seulement.html'">
+    <i class="fas fa-arrow-left"></i>
+          Précédent
+    </button>
+    <h1><i class="fas fa-cogs me-3"></i>Sélectionner une opération</h1>
+    <div class="operations-list" id="operationsList">
+      <div style="text-align:center; padding:40px; color:white;">
+        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+        <p>Chargement des opérations...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading hidden" id="loadingIndicator">
+    <i class="fas fa-spinner"></i> Chargement...
+  </div>
+
+  
+  <script>
+    // Configuration Supabase (repris du fichier d'origine)
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Helpers localStorage (mêmes clés que les autres écrans)
+    const LS = {
+      op:  'prod_selected_operator',
+      pr:  'prod_selected_project',
+      opn: 'prod_selected_operation'
+    };
+    function setLS(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){} }
+    function getLS(key){ try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+
+    let supabase = null;
+    let operations = [];
+    let projectsIndex = {}; // id -> name
+
+    // Fallback local (repris de l'original)
+    const operationsDefault = [
+            {id: 1, name: 'Démontage', project_id: 1},
+            {id: 2, name: 'Nettoyage roulettes', project_id: 1},
+            {id: 3, name: 'Ponçage pied', project_id: 1},
+            {id: 4, name: 'Peinture pied', project_id: 1},
+            {id: 5, name: 'Polissage', project_id: 1},
+            {id: 6, name: 'Assemblage final', project_id: 1},
+            {id: 7, name: 'Contrôle qualité', project_id: 2},
+            {id: 8, name: 'Maintenance préventive', project_id: 2},
+            {id: 9, name: 'Nettoyage général', project_id: 2},
+            {id: 10, name: 'Formation théorique', project_id: 4},
+            {id: 11, name: 'Formation pratique', project_id: 4},
+            {id: 12, name: 'Audit chez tertio', project_id: 5},
+            {id: 13, name: 'Contrôle documentation', project_id: 5}
+    ];
+
+    const projectsDefault = [
+      {'id': 1, 'name': 'Rénovation mobilier bureau'},
+      {'id': 2, 'name': 'Maintenance préventive'},
+      {'id': 3, 'name': 'Projet recyclage plastique'},
+      {'id': 4, 'name': 'Formation nouveaux opérateurs'},
+      {'id': 5, 'name': 'Audit qualité'}
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeOperationsOnly();
+    });
+
+    async function initializeOperationsOnly() {
+      // Lier avec l'écran 2 : exiger un projet sélectionné, sinon revenir à l'écran 2
+      const selectedProject = getLS(LS.pr);
+      if (!selectedProject) {
+        window.location.href = 'ecran-2-seulement.html';
+        return;
+      }
+
+      try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Charger d'abord l'index des projets (pour afficher les sous-titres)
+        await loadProjectsIndexFromDB();
+        // Puis charger les opérations filtrées par projet
+        await loadOperationsFromDB(selectedProject.id);
+      } catch (e) {
+        console.error('Erreur init opérations:', e);
+        loadOperationsDefault(selectedProject.id);
+      }
+    }
+
+    async function loadProjectsIndexFromDB() {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name');
+
+        if (error) throw error;
+        projectsIndex = Object.fromEntries((data || []).map(p => [p.id, p.name]));
+
+        // Compléter par défaut si vide
+        if (!Object.keys(projectsIndex).length) {
+          projectsIndex = Object.fromEntries(projectsDefault.map(p => [p.id, p.name]));
+        }
+      } catch (err) {
+        console.warn('Projet index fallback (local):', err);
+        projectsIndex = Object.fromEntries(projectsDefault.map(p => [p.id, p.name]));
+      }
+    }
+
+    // Charge depuis Supabase -> table "operations", colonnes "id, name, project_id"
+    async function loadOperationsFromDB(projectId) {
+  try {
+    // 1. Récupérer la configuration du projet depuis project_details
+    const { data: projectConfig, error: configError } = await supabase
+      .from('project_details')
+      .select('selected_operations')
+      .eq('project_id', projectId)
+      .single();
+
+    if (configError && !configError.message.includes('No rows returned')) {
+      throw configError;
+    }
+
+    // 2. Si pas de configuration, utiliser les données par défaut
+    if (!projectConfig || !projectConfig.selected_operations) {
+      console.log('Pas de configuration trouvée pour le projet', projectId);
+      loadOperationsDefault(projectId);
+      return;
+    }
+
+    // 3. Parser les IDs des opérations sélectionnées
+    const selectedOperationIds = JSON.parse(projectConfig.selected_operations);
+    
+    if (!Array.isArray(selectedOperationIds) || selectedOperationIds.length === 0) {
+      console.log('Aucune opération configurée pour le projet', projectId);
+      loadOperationsDefault(projectId);
+      return;
+    }
+
+    // 4. Récupérer les détails des opérations sélectionnées
+    const { data: operationsData, error: opsError } = await supabase
+      .from('operations')
+      .select('id, name, category')
+      .in('id', selectedOperationIds)
+      .eq('is_active', true)
+      .order('name');
+
+    if (opsError) throw opsError;
+
+    // 5. Mapper les données pour l'affichage
+    operations = (operationsData || []).map(op => ({
+      id: op.id,
+      name: op.name,
+      project_id: projectId,
+      category: op.category
+    }));
+
+    if (operations.length === 0) {
+      console.log('Aucune opération active trouvée');
+      loadOperationsDefault(projectId);
+    } else {
+      console.log(`${operations.length} opérations chargées pour le projet ${projectId}`);
+      displayOperations();
+    }
+
+  } catch (err) {
+    console.error('Erreur chargement opérations depuis project_details:', err);
+    loadOperationsDefault(projectId);
+  }
+}
+
+    function loadOperationsDefault(projectId) {
+      const list = Array.isArray(operationsDefault) ? operationsDefault.slice() : [];
+      operations = projectId ? list.filter(o => o.project_id == projectId) : list;
+      displayOperations();
+    }
+
+    function displayOperations() {
+      const container = document.getElementById('operationsList');
+      if (!operations.length) {
+        container.innerHTML = '<div style="text-align:center; padding:20px;"><p>Aucune opération disponible pour ce projet.</p></div>';
+        return;
+      }
+
+      container.innerHTML = operations.map(op => (
+        '<button class="operation-btn" data-id="' + op.id + '" data-name="' + op.name + '" data-project="' + op.project_id + '">'
+        + '<div><i class="fas fa-cog me-2"></i>' + op.name + '</div>'
+        + '<div class="op-subtext"><i class="fas fa-folder-open me-1"></i>' + (projectsIndex[op.project_id] || ('Projet #' + op.project_id)) + '</div>'
+        + '</button>'
+      )).join('');
+
+      // clic -> sélection + redirection vers l'écran 4
+      document.querySelectorAll('.operation-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.operation-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+
+          const op = {
+            id: Number(btn.dataset.id),
+            name: btn.dataset.name,
+            project_id: Number(btn.dataset.project)
+          };
+          setLS(LS.opn, op);
+          // Lier avec l'écran 4
+          window.location.href = 'ecran-4-seulement.html';
+        });
+      });
+    }
+  </script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</body>
+</html>

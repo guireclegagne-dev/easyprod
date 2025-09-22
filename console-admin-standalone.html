@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyProd by Luceleanne - Console Administrateur</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --manager-color: #8e44ad;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin-top: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-color) 0%, #34495e 100%);
+            min-height: 600px;
+            padding: 0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 20px 0;
+            margin: 0;
+        }
+
+        .sidebar-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 25px;
+            display: block;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: rgba(52, 152, 219, 0.2);
+            border-left-color: var(--secondary-color);
+            transform: translateX(5px);
+        }
+
+        .sidebar-menu a.manager-access {
+            background: linear-gradient(135deg, var(--manager-color), #9b59b6);
+            border-left-color: var(--manager-color);
+            font-weight: bold;
+            margin: 15px 10px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(142, 68, 173, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a.manager-access::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .sidebar-menu a.manager-access:hover::before {
+            opacity: 1;
+            animation: shine 0.5s ease-in-out;
+        }
+
+        .sidebar-menu a.manager-access:hover {
+            transform: translateY(-3px) translateX(5px);
+            box-shadow: 0 6px 20px rgba(142, 68, 173, 0.4);
+            border-left-color: #fff;
+        }
+
+        .manager-access-icon {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card.users { background: linear-gradient(135deg, var(--success-color), #2ecc71); }
+        .stat-card.operations { background: linear-gradient(135deg, var(--secondary-color), #5dade2); }
+        .stat-card.alerts { background: linear-gradient(135deg, var(--warning-color), #f1c40f); }
+        .stat-card.projects { background: linear-gradient(135deg, var(--info-color), #48c9db); }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stat-loading {
+            font-size: 1.5em;
+            opacity: 0.7;
+        }
+
+        .table-modern {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border: none;
+        }
+
+        .table-modern thead {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .modal-header {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            padding: 10px 15px;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .hidden { display: none; }
+
+        .connection-status {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .connection-status.connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .user-row {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .user-row:hover {
+            background-color: rgba(52, 152, 219, 0.1) !important;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .debug-info.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .debug-info.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .manager-promo {
+            background: linear-gradient(135deg, rgba(142, 68, 173, 0.1), rgba(155, 89, 182, 0.1));
+            border-left: 4px solid var(--manager-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .projects-action-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px dashed var(--secondary-color);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        .projects-action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-style: solid;
+        }
+
+        .btn-create-project {
+            background: linear-gradient(135deg, var(--success-color), #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-create-project:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3);
+        }
+
+        .project-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .project-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: var(--secondary-color);
+        }
+
+        .project-actions {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .project-item:hover .project-actions {
+            opacity: 1;
+        }
+
+        .project-actions .btn {
+            border-radius: 20px;
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        .project-name {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .project-meta {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .project-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .project-status.active {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+
+        .project-status.inactive {
+            background: rgba(149, 165, 166, 0.1);
+            color: #95a5a6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        /* Modal personnalisé pour l'édition de projet */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal-content-custom {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .modal-header-custom {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-body-custom {
+            padding: 20px;
+        }
+
+        .modal-footer-custom {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status connecting" id="connectionStatus">
+        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-shield-alt me-2"></i>
+                EasyProd by Luceleanne - Console Administrateur
+            </a>
+            
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row main-container mx-2">
+            <div class="col-md-3 sidebar">
+                <ul class="sidebar-menu">
+                    <li><a class="menu-item active" onclick="showSection('dashboard')">
+                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                    </a></li>
+                    <li><a href="dashboard-manager-v2.html" class="manager-access" target="_blank">
+                        <i class="fas fa-crown me-2 manager-access-icon"></i> 
+                        <span>DASHBOARD</span><br>
+                        <small style="opacity: 0.9;">MANAGER</small>
+                    </a></li>
+                    <li><a class="menu-item" href="ordres-facturation.html">
+                        <i class="fas fa-file-invoice-dollar me-2"></i> Ordres de facturation
+                    </a></li>
+                    <li><a class="menu-item" href="user-management.html">
+                        <i class="fas fa-users me-2"></i> Utilisateurs
+                    </a></li>
+                    <li><a class="menu-item" href="clients-finaux.html">
+                        <i class="fas fa-handshake me-2"></i> Clients finaux
+                    </a></li>
+                    <li><a class="menu-item" href="revendeurs.html">
+                        <i class="fas fa-store me-2"></i> Revendeurs
+                    </a></li>
+                    <li><a class="menu-item" href="fournisseurs.html">
+                        <i class="fas fa-cart-shopping me-2"></i> Fournisseurs
+                    </a></li>
+                    <li><a class="menu-item" href="operations-admin.html">
+                        <i class="fas fa-cogs me-2"></i> Opérations
+                    </a></li>
+                    <li><a class="menu-item" onclick="showSection('projects')">
+                        <i class="fas fa-project-diagram me-2"></i> Projets
+                    </a></li>
+                    <li><a class="menu-item" href="import-donnees.html">
+                    <i class="fas fa-download me-2"></i> Imports
+                    </a></li>
+                    <li><a class="menu-item" href="ecran-1-seulement.html">
+                    <i class="fas fa-hand me-2"></i> Pupitre opérateur
+                    </a></li>
+                    <li><a class="menu-item" onclick="showSection('debug')">
+                        <i class="fas fa-bug me-2"></i> Debug DB
+                    </a></li>
+                </ul>
+            </div>
+
+            <div class="col-md-9 content-area">
+                <!-- Dashboard -->
+                <div id="dashboard" class="section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-tachometer-alt me-2"></i> Dashboard</h2>
+                        <a href="dashboard-manager-v2.html" class="btn btn-primary" target="_blank">
+                            <i class="fas fa-crown me-1"></i> Ouvrir Dashboard Manager
+                        </a>
+                    </div>
+                    
+                    <!-- Widget promotionnel Dashboard Manager -->
+                    <div class="manager-promo">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5><i class="fas fa-crown me-2" style="color: var(--manager-color);"></i> Supervision Stratégique</h5>
+                                <p class="mb-2">Accédez au <strong>Dashboard Manager</strong> pour une vue d'ensemble temps réel de votre production avec alertes critiques, KPIs de performance et analyses de projets.</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-chart-line me-1"></i> Métriques avancées • 
+                                    <i class="fas fa-bell me-1"></i> Alertes temps réel • 
+                                    <i class="fas fa-users me-1"></i> Performance équipe • 
+                                    <i class="fas fa-project-diagram me-1"></i> Suivi projets
+                                </small>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <a href="dashboard-manager-v2.html" class="btn btn-lg" style="background: var(--manager-color); color: white; border-radius: 15px;" target="_blank">
+                                    <i class="fas fa-external-link-alt me-2"></i>
+                                    Supervision Manager
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="stat-card users">
+                                <div class="stat-value" id="totalUsers">
+                                    <i class="fas fa-spinner fa-spin stat-loading"></i>
+                                </div>
+                                <div class="stat-label">Utilisateurs</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card operations">
+                                <div class="stat-value" id="totalOperations">
+                                    <i class="fas fa-spinner fa-spin stat-loading"></i>
+                                </div>
+                                <div class="stat-label">Opérations</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card alerts">
+                                <div class="stat-value" id="activeAlerts">
+                                    <i class="fas fa-spinner fa-spin stat-loading"></i>
+                                </div>
+                                <div class="stat-label">Alertes</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card projects">
+                                <div class="stat-value" id="activeProjects">
+                                    <i class="fas fa-spinner fa-spin stat-loading"></i>
+                                </div>
+                                <div class="stat-label">Projets</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="dashboard-card">
+                        <h5><i class="fas fa-users me-2"></i> Aperçu Utilisateurs</h5>
+                        <div class="table-responsive">
+                            <table class="table table-modern table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nom</th>
+                                        <th>Email</th>
+                                        <th>Rôle</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersPreviewTable">
+                                    <tr>
+                                        <td colspan="4" class="text-center">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Chargement...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="user-management.html" class="btn btn-primary">
+                                <i class="fas fa-users me-2"></i>Gérer tous les utilisateurs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Projets -->
+                <div id="projects" class="section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-project-diagram me-2"></i> Gestion des Projets</h2>
+                        <a href="creation-projet-simple.html" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i> Nouveau Projet
+                        </a>
+                    </div>
+
+                    <!-- Action principale : Créer un projet -->
+                    <div class="projects-action-card">
+                        <div class="mb-3">
+                            <i class="fas fa-plus-circle fa-3x text-success mb-3"></i>
+                        </div>
+                        <h4 class="mb-3">Créer un Nouveau Projet</h4>
+                        <p class="text-muted mb-4">
+                            Lancez la création d'un nouveau projet de recyclage avec tous les paramètres : 
+                            dates, prix, logistique, planning...
+                        </p>
+                        <a href="creation-projet-simple.html" class="btn-create-project">
+                            <i class="fas fa-rocket me-2"></i>
+                            Créer un Projet
+                        </a>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="fas fa-list me-2"></i> Projets Récents</h5>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" onclick="filterProjects('all')">
+            Tous
+        </button>
+        <button type="button" class="btn btn-outline-success" onclick="filterProjects('active')">
+            Actifs
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="filterProjects('inactive')">
+            Inactifs
+        </button>
+    </div>
+    <button class="btn btn-outline-primary btn-sm" onclick="loadProjectsFromDB()">
+        <i class="fas fa-sync me-1"></i> Actualiser
+    </button>
+</div>
+                        
+                        <div id="projectsList">
+                            <div class="text-center py-3">
+                                <i class="fas fa-spinner fa-spin me-2"></i> Chargement des projets...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Debug -->
+                <div id="debug" class="section hidden">
+                    <h2><i class="fas fa-bug me-2"></i> Debug Base de Données</h2>
+                    
+                    <div class="dashboard-card">
+                        <h5>Tests de Connexion</h5>
+                        
+                        <button class="btn btn-primary me-2" onclick="testConnection()">
+                            <i class="fas fa-plug me-1"></i> Test Connexion
+                        </button>
+                        <button class="btn btn-info me-2" onclick="listTables()">
+                            <i class="fas fa-table me-1"></i> Lister Tables
+                        </button>
+                        <button class="btn btn-success me-2" onclick="createUsersTable()">
+                            <i class="fas fa-plus me-1"></i> Créer Table Users
+                        </button>
+                        <button class="btn btn-warning" onclick="insertSampleData()">
+                            <i class="fas fa-database me-1"></i> Insérer Données Test
+                        </button>
+                        <button class="btn btn-secondary" onclick="createEndUsersTable()">
+                            <i class="fas fa-handshake me-1"></i> Créer Table End-Users
+                        </button>
+                        <div id="debugOutput" class="mt-3">
+                            <!-- Résultats des tests apparaîtront ici -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Autres sections -->
+                <div id="operations" class="section hidden">
+                    <h2><i class="fas fa-cogs me-2"></i> Gestion des Opérations</h2>
+                    <div class="dashboard-card">
+                        <p>Interface de gestion des opérations en cours de développement...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+</script>
+<script>
+        // Variables globales
+        let users = [];
+        let projects = [];
+        let tasks = [];
+        let supabaseLoaded = false;
+        let supabase = null;
+        let connectionError = null;
+        let currentProjectFilter = 'all';
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initialisation de l\'application...');
+            initApp();
+        });
+
+        async function initApp() {
+            updateConnectionStatus('connecting', 'Connexion...');
+            
+            // Tenter de charger Supabase
+            await loadSupabase();
+        }
+
+        async function loadSupabase() {
+            try {
+                // Supabase est déjà chargé par le script dans le head
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseLoaded = true;
+                updateConnectionStatus('connected', 'Connecté');
+                
+                // Charger toutes les données pour les métriques
+                await loadAllDashboardData();
+            } catch (error) {
+                console.error('Erreur:', error);
+                updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                loadSampleData();
+            }
+        }
+
+        // Nouvelle fonction pour charger toutes les données du dashboard
+        async function loadAllDashboardData() {
+            console.log('Chargement de toutes les données du dashboard...');
+            
+            try {
+                // Charger en parallèle tous les types de données
+                await Promise.all([
+                    loadUsersFromDB(),
+                    loadProjectsFromDB(),
+                    loadTasksFromDB()
+                ]);
+                
+                // Calculer les métriques après chargement
+                updateAllStats();
+                
+            } catch (error) {
+                console.error('Erreur chargement données dashboard:', error);
+                loadSampleData();
+            }
+        }
+
+        async function loadTasksFromDB() {
+            if (!supabaseLoaded) return;
+            
+            try {
+                console.log('Chargement des tâches...');
+                
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    if (error.message.includes('relation "tasks" does not exist')) {
+                        console.log('Table tasks n\'existe pas');
+                        tasks = [];
+                        return;
+                    }
+                    throw error;
+                }
+                
+                tasks = data || [];
+                console.log(`${tasks.length} tâches chargées`);
+                
+            } catch (error) {
+                console.error('Erreur chargement tâches:', error);
+                tasks = [];
+            }
+        }
+
+        async function loadProjectsFromDB() {
+            if (!supabaseLoaded) return;
+            
+            try {
+                console.log('Chargement des projets...');
+                
+                const { data, error } = await supabase
+                    .from('projects')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    if (error.message.includes('relation "projects" does not exist')) {
+                        console.log('Table projects n\'existe pas');
+                        projects = [];
+                        updateProjectsDisplay();
+                        return;
+                    }
+                    throw error;
+                }
+                
+                projects = data || [];
+                console.log(`${projects.length} projets chargés`);
+                
+                updateProjectsDisplay();
+                
+            } catch (error) {
+                console.error('Erreur chargement projets:', error);
+                projects = [];
+                updateProjectsDisplay();
+            }
+        }
+
+        async function loadUsersFromDB() {
+            if (!supabaseLoaded) return;
+            
+            try {
+                console.log('Chargement des utilisateurs...');
+                
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    if (error.message.includes('relation "users" does not exist')) {
+                        console.log('Table users n\'existe pas');
+                        users = [];
+                        return;
+                    }
+                    throw error;
+                }
+                
+                users = data || [];
+                console.log(`${users.length} utilisateurs chargés`);
+                
+                loadUsersPreview();
+                
+            } catch (error) {
+                console.error('Erreur chargement utilisateurs:', error);
+                users = [];
+            }
+        }
+
+        // Nouvelle fonction pour calculer toutes les statistiques
+        function updateAllStats() {
+            updateUsersStats();
+            updateOperationsStats();
+            updateAlertsStats();
+            updateProjectsStats();
+        }
+
+        function updateUsersStats() {
+            const totalUsers = users.length;
+            document.getElementById('totalUsers').textContent = totalUsers;
+        }
+
+        function updateOperationsStats() {
+    // Obtenir le début de la journée (00:00:00)
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Compter les tâches créées depuis le début de la journée
+    const todayTasks = tasks.filter(task => {
+        const taskCreatedAt = new Date(task.created_at);
+        return taskCreatedAt >= startOfDay;
+    });
+    
+    document.getElementById('totalOperations').textContent = todayTasks.length;
+}
+
+        function updateAlertsStats() {
+            let alertsCount = 0;
+            const now = new Date();
+            const sevenHoursAgo = new Date(now.getTime() - (7 * 60 * 60 * 1000));
+
+            // 1. Tâches in_progress depuis plus de 7h
+            const longRunningTasks = tasks.filter(task => {
+                if (task.status !== 'in_progress') return false;
+                
+                // Vérifier si la tâche a été mise à jour il y a plus de 7h
+                const taskDate = new Date(task.updated_at || task.created_at);
+                return taskDate < sevenHoursAgo;
+            });
+
+            alertsCount += longRunningTasks.length;
+
+            // 2. Opérateurs actifs non affectés à des tâches
+            const activeUsers = users.filter(user => user.is_active && !user.is_admin);
+            const usersWithTasks = new Set(tasks
+                .filter(task => task.status === 'in_progress' && task.assigned_to)
+                .map(task => task.assigned_to)
+            );
+
+            const unassignedActiveUsers = activeUsers.filter(user => !usersWithTasks.has(user.id));
+            alertsCount += unassignedActiveUsers.length;
+
+            document.getElementById('activeAlerts').textContent = alertsCount;
+        }
+
+        function updateProjectsStats() {
+            const activeProjectsCount = projects.filter(p => p.status === 'active' || !p.status).length;
+            document.getElementById('activeProjects').textContent = activeProjectsCount;
+        }
+
+        function loadSampleData() {
+            console.log('Chargement des données d\'exemple...');
+            users = [
+                {
+                    id: 1,
+                    first_name: 'Admin',
+                    last_name: 'Système',
+                    name: 'Admin Système',
+                    email: 'admin@tertio-recycle.fr',
+                    position: 'Administrateur',
+                    role: 'Administrateur',
+                    hourly_rate: 18.00,
+                    performance_score: 95,
+                    is_active: true,
+                    is_admin: true,
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    first_name: 'Jean',
+                    last_name: 'Dupont',
+                    email: 'jean.dupont@tertio-recycle.fr',
+                    position: 'Opérateur',
+                    hourly_rate: 15.00,
+                    performance_score: 85,
+                    is_active: true,
+                    is_admin: false,
+                    created_at: new Date().toISOString()
+                }
+            ];
+            
+            projects = [
+                {
+                    id: 1,
+                    name: 'Rénovation Mobilier Bureau',
+                    description: 'Projet de reconditionnement de mobilier',
+                    status: 'active',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    name: 'Maintenance Préventive',
+                    description: 'Maintenance des équipements',
+                    status: 'active',
+                    created_at: new Date().toISOString()
+                }
+            ];
+
+            // Données d'exemple pour les tâches
+            const now = new Date();
+            const eightHoursAgo = new Date(now.getTime() - (8 * 60 * 60 * 1000));
+            const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000));
+
+            tasks = [
+                {
+                    id: 1,
+                    title: 'Démontage équipement',
+                    status: 'in_progress',
+                    assigned_to: 2,
+                    created_at: twoHoursAgo.toISOString(),
+                    updated_at: twoHoursAgo.toISOString()
+                },
+                {
+                    id: 2,
+                    title: 'Réparation ancienne',
+                    status: 'in_progress',
+                    assigned_to: null,
+                    created_at: eightHoursAgo.toISOString(),
+                    updated_at: eightHoursAgo.toISOString()
+                },
+                {
+                    id: 3,
+                    title: 'Contrôle qualité',
+                    status: 'completed',
+                    assigned_to: 2,
+                    created_at: now.toISOString(),
+                    updated_at: now.toISOString()
+                }
+            ];
+            
+            updateAllStats();
+            loadUsersPreview();
+            updateProjectsDisplay();
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-1"></i> ${message}`;
+        }
+
+        function loadUsersPreview() {
+            const tbody = document.getElementById('usersPreviewTable');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucun utilisateur trouvé</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.slice(0, 5).map(user => `
+                <tr class="user-row">
+                    <td><strong>${getUserDisplayName(user)}</strong></td>
+                    <td>${user.email || 'Pas d\'email'}</td>
+                    <td>
+                        <span class="badge ${user.is_admin ? 'bg-danger' : 'bg-primary'}">
+                            ${user.is_admin ? 'Admin' : (user.position || user.role || 'Utilisateur')}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-secondary'}">
+                            ${user.is_active ? 'Actif' : 'Inactif'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateProjectsDisplay() {
+            const container = document.getElementById('projectsList');
+            
+            // Filtrer selon la sélection
+            let filteredProjects = projects;
+            if (currentProjectFilter === 'active') {
+                filteredProjects = projects.filter(p => p.status === 'active' || !p.status);
+            } else if (currentProjectFilter === 'inactive') {
+                filteredProjects = projects.filter(p => p.status === 'inactive');
+            }
+
+            if (filteredProjects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-project-diagram"></i>
+                        <h5>Aucun projet trouvé</h5>
+                        <p class="text-muted">Commencez par créer votre premier projet de reconditionnement.</p>
+                        <a href="creation-projet-simple.html" class="btn btn-success">
+                            <i class="fas fa-plus me-2"></i>Créer le Premier Projet
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredProjects.map(project => `
+                <div class="project-item" onclick="viewProject(${project.id})">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="project-name">${project.name}</div>
+                            <div class="project-meta">
+                                <span class="me-3">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    ${formatDate(project.created_at)}
+                                </span>
+                                <span class="project-status ${project.status || 'active'}">
+                                    ${getStatusLabel(project.status || 'active')}
+                                </span>
+                                ${project.description ? `
+                                    <span class="ms-3 text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        ${project.description}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="project-actions" onclick="event.stopPropagation()">
+                            <button class="btn btn-outline-primary btn-sm me-1" onclick="editProject(${project.id})" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-${(project.status === 'active' || !project.status) ? 'warning' : 'success'} btn-sm me-1" 
+                                    onclick="toggleProjectStatus(${project.id})" 
+                                    title="${(project.status === 'active' || !project.status) ? 'Désactiver' : 'Activer'}">
+                                <i class="fas fa-${(project.status === 'active' || !project.status) ? 'pause' : 'play'}"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteProject(${project.id})" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getUserDisplayName(user) {
+            if (user.first_name && user.last_name) {
+                return `${user.first_name} ${user.last_name}`;
+            } else if (user.name) {
+                return user.name;
+            } else {
+                return 'Utilisateur sans nom';
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Date inconnue';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'active': 'Actif',
+                'inactive': 'Inactif',
+            };
+            return labels[status] || 'Actif';
+        }
+
+        function viewProject(projectId) {
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                // Ouvrir la page de détails du projet dans un nouvel onglet
+                window.open(`project-details.html?id=${projectId}`, '_blank');
+            } else {
+                showToast('Projet introuvable', 'danger');
+            }
+        }
+
+        function filterProjects(filter) {
+            currentProjectFilter = filter;
+    
+            // Mettre à jour les boutons actifs
+            document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+    
+            updateProjectsDisplay();
+        }
+
+        async function editProject(projectId) {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            showEditProjectModal(project);
+        }
+
+        function showEditProjectModal(project) {
+            const modalHtml = `
+                <div class="modal-overlay" id="editProjectModal">
+                    <div class="modal-content-custom">
+                        <div class="modal-header-custom">
+                            <h5 class="mb-0">
+                                <i class="fas fa-edit me-2"></i>Modifier le Projet
+                            </h5>
+                        </div>
+                        <div class="modal-body-custom">
+                            <form id="editProjectForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom du projet</label>
+                                    <input type="text" class="form-control" id="editProjectName" 
+                                           value="${project.name}" required maxlength="200">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" id="editProjectDescription" 
+                                              rows="3" maxlength="500">${project.description || ''}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Statut</label>
+                                    <select class="form-control" id="editProjectStatus">
+                                        <option value="active" ${(project.status === 'active' || !project.status) ? 'selected' : ''}>Actif</option>
+                                        <option value="inactive" ${project.status === 'inactive' ? 'selected' : ''}>Inactif</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer-custom">
+                            <button type="button" class="btn btn-secondary" onclick="closeEditProjectModal()">
+                                Annuler
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="saveProjectChanges(${project.id})">
+                                <i class="fas fa-save me-1"></i>Sauvegarder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('editProjectModal').style.display = 'flex';
+        }
+
+        function closeEditProjectModal() {
+            const modal = document.getElementById('editProjectModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function saveProjectChanges(projectId) {
+            const name = document.getElementById('editProjectName').value.trim();
+            const description = document.getElementById('editProjectDescription').value.trim();
+            const status = document.getElementById('editProjectStatus').value;
+
+            if (!name) {
+                showToast('Le nom du projet est obligatoire', 'warning');
+                return;
+            }
+
+            try {
+                const updateData = {
+                    name: name,
+                    description: description || null,
+                    status: status,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (supabaseLoaded) {
+                    const { data, error } = await supabase
+                        .from('projects')
+                        .update(updateData)
+                        .eq('id', projectId)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+
+                    // Mettre à jour dans la liste locale
+                    const index = projects.findIndex(p => p.id === projectId);
+                    if (index !== -1) {
+                        projects[index] = data;
+                    }
+                } else {
+                    // Mode hors-ligne
+                    const index = projects.findIndex(p => p.id === projectId);
+                    if (index !== -1) {
+                        projects[index] = { ...projects[index], ...updateData };
+                    }
+                }
+
+                updateProjectsDisplay();
+                updateProjectsStats();
+                closeEditProjectModal();
+                showToast('Projet modifié avec succès', 'success');
+
+            } catch (error) {
+                console.error('Erreur modification projet:', error);
+                showToast('Erreur lors de la modification: ' + error.message, 'danger');
+            }
+        }
+
+        async function toggleProjectStatus(projectId) {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            const currentStatus = project.status || 'active';
+            const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+            if (!confirm(`${newStatus === 'active' ? 'Activer' : 'Désactiver'} le projet "${project.name}" ?`)) {
+                return;
+            }
+
+            try {
+                if (supabaseLoaded) {
+                    const { data, error } = await supabase
+                        .from('projects')
+                        .update({ 
+                            status: newStatus,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', projectId)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+
+                    // Mettre à jour dans la liste locale
+                    const index = projects.findIndex(p => p.id === projectId);
+                    if (index !== -1) {
+                        projects[index] = data;
+                    }
+                } else {
+                    // Mode hors-ligne
+                    const index = projects.findIndex(p => p.id === projectId);
+                    if (index !== -1) {
+                        projects[index].status = newStatus;
+                        projects[index].updated_at = new Date().toISOString();
+                    }
+                }
+
+                updateProjectsDisplay();
+                updateProjectsStats();
+                showToast(`Projet ${newStatus === 'active' ? 'activé' : 'désactivé'} avec succès`, 'success');
+
+            } catch (error) {
+                console.error('Erreur changement statut:', error);
+                showToast('Erreur lors du changement de statut: ' + error.message, 'danger');
+            }
+        }
+
+        async function deleteProject(projectId) {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) {
+                showToast('Projet introuvable', 'error');
+                return;
+            }
+
+            // Confirmation avec le nom du projet
+            const confirmMessage = `Supprimer définitivement le projet "${project.name}" ?\n\nCette action est irréversible et supprimera toutes les données associées.`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            try {
+                if (supabaseLoaded) {
+                    // Supprimer de la base de données
+                    const { error } = await supabase
+                        .from('projects')
+                        .delete()
+                        .eq('id', projectId);
+
+                    if (error) throw error;
+                    
+                    console.log(`Projet ${projectId} supprimé de la base de données`);
+                } else {
+                    // Mode hors-ligne - marquer comme supprimé
+                    console.log(`Mode hors-ligne: Projet ${projectId} marqué pour suppression`);
+                }
+
+                // Retirer de la liste locale
+                const originalLength = projects.length;
+                projects = projects.filter(p => p.id !== projectId);
+                
+                if (projects.length < originalLength) {
+                    updateProjectsDisplay();
+                    updateProjectsStats();
+                    showToast(`Projet "${project.name}" supprimé avec succès`, 'success');
+                } else {
+                    showToast('Erreur lors de la suppression locale', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Erreur suppression projet:', error);
+                
+                let errorMessage = 'Erreur lors de la suppression du projet';
+                if (error.message.includes('foreign key')) {
+                    errorMessage = 'Impossible de supprimer : le projet est lié à d\'autres données';
+                } else if (error.message.includes('permission')) {
+                    errorMessage = 'Permissions insuffisantes pour supprimer ce projet';
+                } else {
+                    errorMessage = `Erreur: ${error.message}`;
+                }
+                
+                showToast(errorMessage, 'danger');
+            }
+        }
+
+        // Navigation
+        function showSection(sectionId) {
+            // Masquer toutes les sections
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            
+            // Afficher la section demandée
+            document.getElementById(sectionId).classList.remove('hidden');
+            
+            // Mettre à jour le menu actif
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            
+            // Trouver l'élément cliqué et le marquer comme actif
+            if (event && event.target) {
+                const clickedElement = event.target.closest('.menu-item');
+                if (clickedElement) {
+                    clickedElement.classList.add('active');
+                }
+            }
+            
+            // Charger les données spécifiques à la section
+            if (sectionId === 'projects') {
+                loadProjectsFromDB();
+            }
+        }
+
+        // Fonctions de debug
+        async function testConnection() {
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<div class="debug-info"><i class="fas fa-spinner fa-spin"></i> Test en cours...</div>';
+            
+            try {
+                if (!supabase) {
+                    throw new Error('Client Supabase non initialisé');
+                }
+                
+                const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+                
+                if (error) throw error;
+                
+                output.innerHTML = `
+                    <div class="debug-info success">
+                        <strong>Connexion réussie!</strong><br>
+                        URL: ${SUPABASE_URL}<br>
+                        Table users accessible<br>
+                        Timestamp: ${new Date().toLocaleString()}
+                    </div>
+                `;
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="debug-info error">
+                        <strong>Échec de connexion</strong><br>
+                        Erreur: ${error.message}<br>
+                        Type: ${error.code || 'Inconnue'}<br>
+                        Timestamp: ${new Date().toLocaleString()}
+                    </div>
+                `;
+            }
+        }
+
+        async function listTables() {
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<div class="debug-info"><i class="fas fa-spinner fa-spin"></i> Listage des tables...</div>';
+            
+            try {
+                if (!supabase) throw new Error('Client Supabase non initialisé');
+                
+                // Essayer plusieurs méthodes pour lister les tables
+                let tables = [];
+                
+                try {
+                    const { data } = await supabase.rpc('get_tables');
+                    tables = data;
+                } catch (e) {
+                    console.log('RPC get_tables indisponible, test manuel...');
+                    
+                    // Test manuel des tables communes
+                    const testTables = ['users', 'operations', 'projects', 'production_sheets', 'end_users', 'tasks'];
+                    const existingTables = [];
+                    
+                    for (const table of testTables) {
+                        try {
+                            await supabase.from(table).select('count', { count: 'exact', head: true });
+                            existingTables.push(table);
+                        } catch (e) {
+                            // Table n'existe pas
+                        }
+                    }
+                    
+                    tables = existingTables;
+                }
+                
+                output.innerHTML = `
+                    <div class="debug-info success">
+                        <strong>Tables trouvées:</strong><br>
+                        ${tables.length > 0 ? tables.join('<br>') : 'Aucune table trouvée ou accessible'}
+                    </div>
+                `;
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="debug-info error">
+                        <strong>Erreur listage tables</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function createUsersTable() {
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<div class="debug-info"><i class="fas fa-spinner fa-spin"></i> Création de la table users...</div>';
+            
+            try {
+                if (!supabase) throw new Error('Client Supabase non initialisé');
+                
+                // Créer la table via SQL
+                const { data, error } = await supabase.rpc('create_users_table');
+                
+                if (error) {
+                    // Si RPC n'existe pas, afficher les instructions SQL
+                    output.innerHTML = `
+                        <div class="debug-info error">
+                            <strong>Création automatique indisponible</strong><br>
+                            Exécutez ce SQL dans l'éditeur Supabase :<br><br>
+                            <code style="background: white; padding: 10px; border-radius: 4px; display: block; margin: 10px 0;">
+-- Créer la table users<br>
+CREATE TABLE IF NOT EXISTS users (<br>
+&nbsp;&nbsp;id SERIAL PRIMARY KEY,<br>
+&nbsp;&nbsp;first_name TEXT,<br>
+&nbsp;&nbsp;last_name TEXT,<br>
+&nbsp;&nbsp;email TEXT UNIQUE,<br>
+&nbsp;&nbsp;position TEXT,<br>
+&nbsp;&nbsp;hourly_rate DECIMAL(5,2) DEFAULT 15.00,<br>
+&nbsp;&nbsp;performance_score INTEGER DEFAULT 85,<br>
+&nbsp;&nbsp;is_active BOOLEAN DEFAULT true,<br>
+&nbsp;&nbsp;is_admin BOOLEAN DEFAULT false,<br>
+&nbsp;&nbsp;profile_photo TEXT,<br>
+&nbsp;&nbsp;birth_date DATE,<br>
+&nbsp;&nbsp;created_at TIMESTAMP DEFAULT now(),<br>
+&nbsp;&nbsp;updated_at TIMESTAMP DEFAULT now()<br>
+);<br><br>
+-- Activer RLS<br>
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;<br><br>
+-- Politique pour permettre toutes les opérations<br>
+CREATE POLICY "Allow all operations on users" ON users<br>
+&nbsp;&nbsp;FOR ALL USING (true);<br><br>
+-- Table projects<br>
+CREATE TABLE IF NOT EXISTS projects (<br>
+&nbsp;&nbsp;id SERIAL PRIMARY KEY,<br>
+&nbsp;&nbsp;name TEXT NOT NULL,<br>
+&nbsp;&nbsp;description TEXT,<br>
+&nbsp;&nbsp;status TEXT DEFAULT 'active',<br>
+&nbsp;&nbsp;created_at TIMESTAMP DEFAULT now(),<br>
+&nbsp;&nbsp;updated_at TIMESTAMP DEFAULT now()<br>
+);<br><br>
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;<br>
+CREATE POLICY "Allow all operations on projects" ON projects FOR ALL USING (true);<br><br>
+-- Table tasks<br>
+CREATE TABLE IF NOT EXISTS tasks (<br>
+&nbsp;&nbsp;id SERIAL PRIMARY KEY,<br>
+&nbsp;&nbsp;title TEXT NOT NULL,<br>
+&nbsp;&nbsp;description TEXT,<br>
+&nbsp;&nbsp;status TEXT DEFAULT 'pending',<br>
+&nbsp;&nbsp;assigned_to INTEGER REFERENCES users(id),<br>
+&nbsp;&nbsp;project_id INTEGER REFERENCES projects(id),<br>
+&nbsp;&nbsp;created_at TIMESTAMP DEFAULT now(),<br>
+&nbsp;&nbsp;updated_at TIMESTAMP DEFAULT now()<br>
+);<br><br>
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;<br>
+CREATE POLICY "Allow all operations on tasks" ON tasks FOR ALL USING (true);
+                            </code>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                output.innerHTML = `
+                    <div class="debug-info success">
+                        <strong>Table users créée avec succès!</strong><br>
+                        Vous pouvez maintenant insérer des données de test.
+                    </div>
+                `;
+                
+                // Recharger pour vérifier
+                setTimeout(() => {
+                    testConnection();
+                }, 1000);
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="debug-info error">
+                        <strong>Erreur création table</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Fonction pour créer la table end_users
+        async function createEndUsersTable() {
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<div class="debug-info"><i class="fas fa-spinner fa-spin"></i> Création de la table end_users...</div>';
+            
+            try {
+                if (!supabase) throw new Error('Client Supabase non initialisé');
+                
+                // Afficher les instructions SQL pour créer la table end_users
+                output.innerHTML = `
+                    <div class="debug-info">
+                        <strong>Création de la table end_users</strong><br>
+                        Exécutez ce SQL dans l'éditeur Supabase :<br><br>
+                        <code style="background: white; padding: 10px; border-radius: 4px; display: block; margin: 10px 0; white-space: pre;">
+-- Créer la table end_users (clients finaux)
+CREATE TABLE IF NOT EXISTS end_users (
+    id SERIAL PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    contact_person TEXT,
+    email TEXT,
+    phone TEXT,
+    hq_address TEXT,
+    delivery_address TEXT,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+-- Activer RLS
+ALTER TABLE end_users ENABLE ROW LEVEL SECURITY;
+
+-- Politique pour permettre toutes les opérations
+CREATE POLICY "Allow all operations on end_users" ON end_users
+    FOR ALL USING (true);
+
+-- Fonction pour auto-update de updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$ language 'plpgsql';
+
+-- Trigger pour auto-update
+CREATE TRIGGER update_end_users_updated_at 
+    BEFORE UPDATE ON end_users 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+                        </code>
+                    </div>
+                `;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="debug-info error">
+                        <strong>Erreur création table end_users</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function insertSampleData() {
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<div class="debug-info"><i class="fas fa-spinner fa-spin"></i> Insertion des données test...</div>';
+            
+            try {
+                if (!supabase) throw new Error('Client Supabase non initialisé');
+                
+                const sampleUsers = [
+                    {
+                        first_name: 'Admin',
+                        last_name: 'Système',
+                        email: 'admin@tertio-recycle.fr',
+                        position: 'Administrateur',
+                        hourly_rate: 18.00,
+                        performance_score: 95,
+                        is_active: true,
+                        is_admin: true
+                    },
+                    {
+                        first_name: 'Morice',
+                        last_name: 'Gouar',
+                        email: 'morice.gouar@tertio-recycle.fr',
+                        position: 'Opérateur Senior',
+                        hourly_rate: 15.50,
+                        performance_score: 88,
+                        is_active: true,
+                        is_admin: false
+                    },
+                    {
+                        first_name: 'Marie',
+                        last_name: 'DUPONT',
+                        email: 'marie.dupont@tertio-recycle.fr',
+                        position: 'Opératrice',
+                        hourly_rate: 16.00,
+                        performance_score: 75,
+                        is_active: true,
+                        is_admin: false,
+                        birth_date: '1990-03-10'
+                    }
+                ];
+                
+                const { data, error } = await supabase
+                    .from('users')
+                    .upsert(sampleUsers, { 
+                        onConflict: 'email',
+                        ignoreDuplicates: false 
+                    })
+                    .select();
+                
+                if (error) throw error;
+                
+                output.innerHTML = `
+                    <div class="debug-info success">
+                        <strong>${data.length} utilisateurs insérés/mis à jour!</strong><br>
+                        ${data.map(u => `• ${u.first_name} ${u.last_name} (${u.email})`).join('<br>')}
+                    </div>
+                `;
+                
+                // Recharger les données
+                await loadAllDashboardData();
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="debug-info error">
+                        <strong>Erreur insertion données</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed`;
+            toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-${type === 'success' ? 'check' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>${message}</span>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        // Auto-refresh des données toutes les 30 secondes
+        setInterval(() => {
+            if (supabaseLoaded) {
+                // Recharger silencieusement les données pour mettre à jour les métriques
+                loadAllDashboardData();
+            }
+        }, 30000);
+
+        // Rafraîchir les projets si on est sur la section projets
+        setInterval(() => {
+            const projectsSection = document.getElementById('projects');
+            if (!projectsSection.classList.contains('hidden') && supabaseLoaded) {
+                loadProjectsFromDB();
+            }
+        }, 15000);
+
+        console.log('Console administrateur initialisée avec métriques temps réel');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation; user-select: none;
+    }
+    .screen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; color:white; }
+    h1 { font-size:2.2em; margin-bottom:30px; font-weight:300; text-align:center; }
+    .card { width:min(640px,95vw); padding:22px; border-radius:16px; background: rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.25); backdrop-filter: blur(10px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
+    .row { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:1.05em; }
+    .row i { width:24px; text-align:center; opacity:.95; }
+    .controls { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; }
+    .btn-white { background:#fff; color:#1f2937; }
+    .btn-outline { background:transparent; color:white; border:2px solid rgba(255,255,255,.5); }
+    .timer .time { font-size:3rem; font-weight:700; line-height:1.2; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+    .timer .since { opacity:.9; margin-top:6px; font-size:.95em; }
+    .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
+    .hidden { display:none !important; }
+    @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } .timer .time { font-size:2.4rem; } }
+    .bg-active { background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%) !important; }
+    .bg-paused { background: linear-gradient(135deg,#ffc107 0%,#ff8f00 100%) !important; }
+    .center { text-align:center; }
+  </style>
+ <script src="config.js"></script>
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+    const LS = {
+      op: 'prod_selected_operator',
+      pr: 'prod_selected_project',
+      opn: 'prod_selected_operation',
+      start: 'prod_started_at',
+      end: 'prod_ended_at',
+      exec: 'prod_execution_ms',
+      pause: 'prod_pause_ms',
+      taskId: 'current_task_id'
+    };
+    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+    function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
+  </script>
+
+<title>Tâche en cours — Écran 5</title>
+</head>
+<body>
+  <section class="screen" id="scr5" style="background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);">
+    <h1><i class="fas fa-industry me-3"></i>Tâche en cours</h1>
+    <div class="card">
+      <div class="row"><i class="fas fa-user"></i> <span id="opName">—</span></div>
+      <div class="row"><i class="fas fa-folder"></i> <span id="projName">—</span></div>
+      <div class="row"><i class="fas fa-cog"></i> <span id="opnName">—</span></div>
+      <div class="timer center">
+        <div class="time" id="elapsed">00:00:00</div>
+        <div class="since" id="since">En cours...</div>
+      </div>
+      <div class="controls">
+        <button class="btn btn-outline" id="pauseBtn">Pause</button>
+        <button class="btn btn-white" id="resumeBtn" disabled>Reprendre</button>
+        <button class="btn btn-outline" id="stopBtn">Arrêter</button>
+        <button class="btn btn-white" id="to6" disabled>Finaliser</button>
+      </div>
+      <div class="statusbar" id="msg"></div>
+    </div>
+  </section>
+
+<script>
+let startTime=null, timerInt=null, pauseStart=null, totalPause=0;
+let supabase = null;
+let taskId = null;
+let pauseUpdateInterval = null;
+
+function setBg(state){
+  const el = document.getElementById('scr5');
+  el.classList.remove('bg-active','bg-paused');
+  if (state==='running') el.classList.add('bg-active');
+  if (state==='paused')  el.classList.add('bg-paused');
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
+  if(!op) return location.href='ecran-1-seulement.html';
+  if(!pr) return location.href='ecran-2-seulement.html';
+  if(!opn) return location.href='ecran-3-seulement.html';
+  
+  document.getElementById('opName').textContent=op.name;
+  document.getElementById('projName').textContent=pr.name;
+  document.getElementById('opnName').textContent=opn.name;
+
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  taskId = getLS(LS.taskId);
+  
+  const storedStart = getLS(LS.start);
+  if (storedStart) {
+    startTime = new Date(storedStart);
+    document.getElementById('since').textContent = 'Démarré à ' + startTime.toLocaleTimeString();
+    run();
+  } else {
+    // Si pas de start time, rediriger vers écran 4
+    location.href = 'ecran-4-seulement.html';
+    return;
+  }
+
+  document.getElementById('pauseBtn').onclick = pauseTask;
+  document.getElementById('resumeBtn').onclick = resumeTask;
+  document.getElementById('stopBtn').onclick = stopTask;
+  document.getElementById('to6').onclick = ()=>{ window.location.href='ecran-6-seulement.html'; };
+});
+
+function run(){
+  setBg('running');
+  document.getElementById('pauseBtn').disabled = false;
+  document.getElementById('resumeBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  timerInt = setInterval(update, 250);
+}
+
+function update(){
+  const now = new Date();
+  const eff = now - startTime - (pauseStart ? (now - pauseStart) : 0) - totalPause;
+  document.getElementById('elapsed').textContent = fmtTime(eff);
+}
+
+async function pauseTask(){
+  if (!startTime || pauseStart) return;
+  
+  pauseStart = new Date();
+  clearInterval(timerInt); 
+  timerInt = null;
+  setBg('paused');
+  
+  document.getElementById('pauseBtn').disabled = true;
+  document.getElementById('resumeBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('since').textContent = 'En pause depuis ' + pauseStart.toLocaleTimeString();
+  
+  // Démarrer la mise à jour de pause_ms toutes les minutes
+  pauseUpdateInterval = setInterval(updatePauseInDB, 60000); // 60 secondes
+  
+  document.getElementById('msg').textContent = 'Tâche en pause';
+}
+
+async function resumeTask(){
+  if (!startTime || !pauseStart) return;
+  
+  totalPause += (new Date() - pauseStart);
+  pauseStart = null;
+  
+  // Arrêter les mises à jour de pause
+  if (pauseUpdateInterval) {
+    clearInterval(pauseUpdateInterval);
+    pauseUpdateInterval = null;
+  }
+  
+  run();
+  document.getElementById('since').textContent = 'Repris à ' + new Date().toLocaleTimeString();
+  document.getElementById('msg').textContent = 'Tâche reprise';
+}
+
+async function updatePauseInDB() {
+  if (!taskId || !pauseStart) return;
+  
+  try {
+    const currentPauseTime = totalPause + (new Date() - pauseStart);
+    
+    const { error } = await supabase
+      .from('tasks')
+      .update({ pause_ms: currentPauseTime })
+      .eq('id', taskId);
+    
+    if (error) throw error;
+    
+    console.log('Pause mise à jour:', fmtTime(currentPauseTime));
+    
+  } catch(e) {
+    console.error('Erreur mise à jour pause:', e);
+  }
+}
+
+async function stopTask(){
+  const end = new Date();
+  if (pauseStart) { 
+    totalPause += (end - pauseStart); 
+    pauseStart = null; 
+  }
+  
+  // Arrêter tous les timers
+  clearInterval(timerInt); 
+  timerInt = null;
+  if (pauseUpdateInterval) {
+    clearInterval(pauseUpdateInterval);
+    pauseUpdateInterval = null;
+  }
+  
+  setBg(''); 
+  document.getElementById('since').textContent = 'Terminé à ' + end.toLocaleTimeString();
+  
+  const exec = startTime ? (end - startTime - totalPause) : 0;
+  setLS(LS.end, end.toISOString());
+  setLS(LS.exec, exec);
+  setLS(LS.pause, totalPause);
+  
+  // Mettre à jour la tâche existante avec les temps finaux
+  await updateTaskWithFinalTimes(end, exec, totalPause);
+  
+  document.getElementById('pauseBtn').disabled = true;
+  document.getElementById('resumeBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('to6').disabled = false;
+}
+
+async function updateTaskWithFinalTimes(endTime, execMs, pauseMs) {
+  if (!taskId) {
+    document.getElementById('msg').textContent = 'Mode offline - données sauvegardées localement';
+    return;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        ended_at: endTime.toISOString(),
+        execution_ms: execMs,
+        pause_ms: pauseMs
+      })
+      .eq('id', taskId);
+    
+    if (error) throw error;
+    
+    document.getElementById('msg').textContent = 'Tâche mise à jour';
+    
+  } catch(e) {
+    console.error('Erreur mise à jour finale:', e);
+    document.getElementById('msg').textContent = 'Erreur réseau - données sauvegardées localement';
+  }
+}
+</script>
+</body>
+</html>

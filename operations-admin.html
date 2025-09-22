@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration des Opérations - EasyProd</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --level1-color: #27ae60;
+            --level2-color: #f39c12;
+            --level3-color: #e74c3c;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--secondary-color);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-card.production { border-left-color: var(--success-color); }
+        .stat-card.logistics { border-left-color: var(--info-color); }
+        .stat-card.light { border-left-color: var(--warning-color); }
+        .stat-card.organization { border-left-color: var(--danger-color); }
+        .stat-card.representation { border-left-color: #9b59b6; }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .operations-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .operation-card {
+            border: none;
+            border-bottom: 1px solid #e9ecef;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .operation-card:hover {
+            background: rgba(52, 152, 219, 0.05);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .operation-card:last-child {
+            border-bottom: none;
+        }
+
+        .operation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .operation-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        .operation-id {
+            background: var(--secondary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .operation-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .operation-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .badge-production { background: rgba(39, 174, 96, 0.1); color: var(--success-color); }
+        .badge-logistics { background: rgba(23, 162, 184, 0.1); color: var(--info-color); }
+        .badge-light { background: rgba(243, 156, 18, 0.1); color: var(--warning-color); }
+        .badge-organization { background: rgba(231, 76, 60, 0.1); color: var(--danger-color); }
+        .badge-representation { background: rgba(155, 89, 182, 0.1); color: #9b59b6; }
+
+        .level-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+
+        .level-1 { background: var(--level1-color); }
+        .level-2 { background: var(--level2-color); }
+        .level-3 { background: var(--level3-color); }
+        .level-undefined { background: #6c757d; }
+
+        .operation-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.875em;
+            border-radius: 20px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-section h5 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+
+        .level-selector {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+        }
+
+        .level-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .level-option:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .level-option.selected {
+            border-color: var(--success-color);
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .level-option.level-1.selected { border-color: var(--level1-color); background: rgba(39, 174, 96, 0.1); }
+        .level-option.level-2.selected { border-color: var(--level2-color); background: rgba(243, 156, 18, 0.1); }
+        .level-option.level-3.selected { border-color: var(--level3-color); background: rgba(231, 76, 60, 0.1); }
+
+        .connection-status {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .connection-status.connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .operation-meta {
+                flex-direction: column;
+                align-items: start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="autres%20versions/old2-console-admin-standalone.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                EasyProd - Administration Opérations
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link me-3" href="user-management.html">
+                    <i class="fas fa-users me-1"></i>
+                    Utilisateurs
+                </a>
+                <a href="console-admin-standalone.html" class="btn btn-outline-light me-3">
+                        <i class="fas fa-arrow-left me-2"></i>Retour Console
+                    </a>
+                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user-shield me-1"></i>
+                    Administrateur
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <!-- Vue Liste des Opérations -->
+        <div id="operationsListView">
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-cogs me-3"></i>Administration des Opérations</h1>
+                    <p class="mb-0">Gestion des opérations de reconditionnement (Niveaux 1, 2 et 3)</p>
+                </div>
+                <button class="btn btn-success btn-lg" onclick="showCreateOperationForm()">
+                    <i class="fas fa-plus me-2"></i>Nouvelle Opération
+                </button>
+            </div>
+
+            <div class="content-area">
+                <!-- Statistiques par catégorie -->
+                <div class="stats-overview">
+                    <div class="stat-card production">
+                        <div class="stat-value" id="productionCount">0</div>
+                        <div class="stat-label">Production</div>
+                    </div>
+                    <div class="stat-card logistics">
+                        <div class="stat-value" id="logisticsCount">0</div>
+                        <div class="stat-label">Logistique</div>
+                    </div>
+                    <div class="stat-card light">
+                        <div class="stat-value" id="lightCount">0</div>
+                        <div class="stat-label">Opérations Light</div>
+                    </div>
+                    <div class="stat-card organization">
+                        <div class="stat-value" id="organizationCount">0</div>
+                        <div class="stat-label">Organisation</div>
+                    </div>
+                    <div class="stat-card representation">
+                        <div class="stat-value" id="representationCount">0</div>
+                        <div class="stat-label">Représentation</div>
+                    </div>
+                </div>
+
+                <!-- Filtres et recherche -->
+                <div class="operations-container">
+                    <div class="filters-section">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" placeholder="Rechercher une opération..." 
+                                       id="searchOperations" onkeyup="filterOperations()">
+                            </div>
+                            <div class="col-md-3 mt-2 mt-md-0">
+                                <select class="form-select" id="categoryFilter" onchange="filterOperations()">
+                                    <option value="">Toutes les catégories</option>
+                                    <option value="PRODUCTION">Production</option>
+                                    <option value="LOGISTIQUE">Logistique</option>
+                                    <option value="OPERATION LIGHT">Opérations Light</option>
+                                    <option value="ORGANISATION">Organisation</option>
+                                    <option value="REPRESENTATION">Représentation</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mt-2 mt-md-0">
+                                <select class="form-select" id="levelFilter" onchange="filterOperations()">
+                                    <option value="">Tous les niveaux</option>
+                                    <option value="1">Niveau 1 (Nettoyage)</option>
+                                    <option value="2">Niveau 2 (Fonctionnel)</option>
+                                    <option value="3">Niveau 3 (Premium)</option>
+                                    <option value="undefined">Non défini</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mt-2 mt-md-0">
+                                <select class="form-select" id="statusFilter" onchange="filterOperations()">
+                                    <option value="">Tous</option>
+                                    <option value="active">Actives</option>
+                                    <option value="inactive">Inactives</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liste des opérations -->
+                    <div id="operationsList">
+                        <!-- Sera rempli par JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vue Création/Modification d'Opération -->
+        <div id="operationFormView" class="hidden">
+            <div class="page-header">
+                <div>
+                    <h1 id="formTitle"><i class="fas fa-plus me-3"></i>Nouvelle Opération</h1>
+                    <p class="mb-0">Définir une nouvelle opération de reconditionnement</p>
+                </div>
+                <button class="btn btn-outline-light" onclick="showOperationsList()">
+                    <i class="fas fa-arrow-left me-2"></i>Retour à la Liste
+                </button>
+            </div>
+
+            <div class="content-area">
+                <div class="form-container">
+                    <form id="operationForm" onsubmit="saveOperation(event)">
+                        <input type="hidden" id="editOperationId" value="">
+                        
+                        <!-- Section Informations de base -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-info-circle me-2"></i>Informations de Base</h5>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label">Nom de l'opération *</label>
+                                    <input type="text" class="form-control" id="operationName" 
+                                           placeholder="Ex: Nettoyage roulettes, Ponçage pied..." required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Catégorie *</label>
+                                    <select class="form-select" id="operationCategory" required>
+                                        <option value="">Sélectionnez une catégorie</option>
+                                        <option value="PRODUCTION">Production</option>
+                                        <option value="LOGISTIQUE">Logistique</option>
+                                        <option value="OPERATION LIGHT">Opération Light</option>
+                                        <option value="ORGANISATION">Organisation</option>
+                                        <option value="REPRESENTATION">Représentation</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="operationDescription" rows="3"
+                                          placeholder="Description détaillée de l'opération, instructions spécifiques..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Section Niveau de Reconditionnement -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-layer-group me-2"></i>Niveau de Reconditionnement</h5>
+                            <div class="level-selector">
+                                <div class="level-option level-1" onclick="selectLevel(1)">
+                                    <i class="fas fa-broom fa-2x mb-2" style="color: var(--level1-color);"></i>
+                                    <h6>Niveau 1</h6>
+                                    <small>Nettoyage basique</small>
+                                </div>
+                                <div class="level-option level-2" onclick="selectLevel(2)">
+                                    <i class="fas fa-tools fa-2x mb-2" style="color: var(--level2-color);"></i>
+                                    <h6>Niveau 2</h6>
+                                    <small>Fonctionnel + action</small>
+                                </div>
+                                <div class="level-option level-3" onclick="selectLevel(3)">
+                                    <i class="fas fa-gem fa-2x mb-2" style="color: var(--level3-color);"></i>
+                                    <h6>Niveau 3</h6>
+                                    <small>Premium complet</small>
+                                </div>
+                                <div class="level-option" onclick="selectLevel(null)">
+                                    <i class="fas fa-question fa-2x mb-2" style="color: #6c757d;"></i>
+                                    <h6>Non défini</h6>
+                                    <small>Transversal</small>
+                                </div>
+                            </div>
+                            <input type="hidden" id="operationLevel" value="">
+                        </div>
+
+                        <!-- Section Temps et Unité -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-clock me-2"></i>Estimation Temporelle</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Durée estimée (heures)</label>
+                                    <input type="number" class="form-control" id="operationDuration" 
+                                           step="0.1" min="0" placeholder="Ex: 0.5, 1.2, 2.0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unité de mesure</label>
+                                    <select class="form-select" id="operationUnit">
+                                        <option value="pièce">Pièce</option>
+                                        <option value="roulette">Roulette</option>
+                                        <option value="pied">Pied</option>
+                                        <option value="siège">Siège complet</option>
+                                        <option value="dossier">Dossier</option>
+                                        <option value="assise">Assise</option>
+                                        <option value="accessoire">Accessoire</option>
+                                        <option value="lot">Lot</option>
+                                        <option value="intervention">Intervention</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section Statut -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-toggle-on me-2"></i>Statut</h5>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="operationActive" checked>
+                                <label class="form-check-label" for="operationActive">
+                                    Opération active (utilisable dans les fiches de production)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between pt-4">
+                            <button type="button" class="btn btn-outline-secondary" onclick="showOperationsList()">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i><span id="saveButtonText">Créer l'Opération</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+   <script src="config.js"></script>
+<script>
+    // Configuration Supabase
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Variables globales
+    let operations = [];
+    let supabaseLoaded = false;
+    let supabase = null;
+    let allOperations = [];
+    
+    // TABLEAU VIDE - Plus d'opérations sample par défaut
+    const defaultOperations = [];
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        initApp();
+    });
+
+    async function initApp() {
+        updateConnectionStatus('connecting', 'Connexion...');
+        
+        // Charger les opérations (maintenant vide par défaut)
+        operations = [...defaultOperations];
+        allOperations = [...operations];
+        loadOperationsList();
+        updateStats();
+        
+        // Tenter connexion Supabase
+        await initSupabase();
+    }
+
+    async function initSupabase() {
+        try {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@supabase/supabase-js@2';
+            
+            script.onload = async () => {
+                try {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    
+                    // Test de connexion et création table si nécessaire
+                    await initOperationsTable();
+                    
+                    supabaseLoaded = true;
+                    updateConnectionStatus('connected', 'Base de données connectée');
+                    
+                    // Charger les vraies données
+                    await loadOperationsFromDB();
+                    
+                } catch (error) {
+                    console.warn('Erreur Supabase:', error);
+                    updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                }
+            };
+            
+            script.onerror = () => {
+                updateConnectionStatus('disconnected', 'Mode hors-ligne');
+            };
+            
+            document.head.appendChild(script);
+            
+        } catch (error) {
+            console.error('Erreur initialisation:', error);
+            updateConnectionStatus('disconnected', 'Mode hors-ligne');
+        }
+    }
+
+    async function initOperationsTable() {
+        try {
+            // Test si la table existe
+            const { data, error } = await supabase.from('operations').select('count', { count: 'exact', head: true });
+            
+            if (error && error.message.includes('relation "operations" does not exist')) {
+                console.log('Création de la table operations...');
+                
+                // Créer la table (nécessite des privilèges admin ou SQL Editor)
+                const createTableSQL = `
+                    CREATE TABLE IF NOT EXISTS operations (
+                        id SERIAL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        reconditioning_level INTEGER,
+                        estimated_duration DECIMAL(4,2),
+                        unit TEXT DEFAULT 'pièce',
+                        description TEXT,
+                        is_active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMP DEFAULT now(),
+                        updated_at TIMESTAMP DEFAULT now()
+                    );
+
+                    ALTER TABLE operations ENABLE ROW LEVEL SECURITY;
+                    
+                    CREATE POLICY "Allow all operations on operations" ON operations FOR ALL USING (true);
+
+                    CREATE OR REPLACE FUNCTION update_operations_updated_at()
+                    RETURNS TRIGGER AS $
+                    BEGIN
+                        NEW.updated_at = now();
+                        RETURN NEW;
+                    END;
+                    $ language 'plpgsql';
+
+                    CREATE TRIGGER update_operations_updated_at
+                        BEFORE UPDATE ON operations
+                        FOR EACH ROW
+                        EXECUTE FUNCTION update_operations_updated_at();
+                `;
+                
+                showToast('Table operations manquante. Créez-la via SQL Editor dans Supabase.', 'warning');
+                console.log('SQL à exécuter:', createTableSQL);
+                return;
+            }
+            
+            console.log('Table operations accessible');
+            
+        } catch (error) {
+            console.error('Erreur init table operations:', error);
+        }
+    }
+
+    async function loadOperationsFromDB() {
+        if (!supabaseLoaded) return;
+        
+        try {
+            const { data, error } = await supabase
+                .from('operations')
+                .select('*')
+                .order('category, name');
+            
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                operations = data;
+                allOperations = [...operations];
+                console.log(`${operations.length} opérations chargées depuis la BD`);
+            } else {
+                // NE PLUS insérer les opérations par défaut automatiquement
+                console.log('Aucune opération trouvée en base de données');
+            }
+            
+            loadOperationsList();
+            updateStats();
+            
+        } catch (error) {
+            console.error('Erreur chargement opérations:', error);
+            showToast('Erreur lors du chargement des opérations: ' + error.message, 'danger');
+        }
+    }
+
+    function updateConnectionStatus(status, message) {
+        const statusEl = document.getElementById('connectionStatus');
+        statusEl.className = `connection-status ${status}`;
+        statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-1"></i> ${message}`;
+    }
+
+    function updateStats() {
+        const stats = {
+            production: operations.filter(op => op.category === 'PRODUCTION').length,
+            logistics: operations.filter(op => op.category === 'LOGISTIQUE').length,
+            light: operations.filter(op => op.category === 'OPERATION LIGHT').length,
+            organization: operations.filter(op => op.category === 'ORGANISATION').length,
+            representation: operations.filter(op => op.category === 'REPRESENTATION').length
+        };
+
+        document.getElementById('productionCount').textContent = stats.production;
+        document.getElementById('logisticsCount').textContent = stats.logistics;
+        document.getElementById('lightCount').textContent = stats.light;
+        document.getElementById('organizationCount').textContent = stats.organization;
+        document.getElementById('representationCount').textContent = stats.representation;
+    }
+
+    function loadOperationsList() {
+        const container = document.getElementById('operationsList');
+        
+        if (operations.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                    <h4>Aucune opération trouvée</h4>
+                    <p class="text-muted">Commencez par créer votre première opération de reconditionnement.</p>
+                    <button class="btn btn-success" onclick="showCreateOperationForm()">
+                        <i class="fas fa-plus me-2"></i>Créer la Première Opération
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = operations.map(operation => `
+            <div class="operation-card" onclick="viewOperationDetails('${operation.id}')">
+                <div class="operation-header">
+                    <h6 class="operation-title">${operation.name}</h6>
+                    <div class="operation-id">ID: ${operation.id}</div>
+                </div>
+                <div class="operation-meta">
+                    <span class="operation-badge badge-${getCategoryClass(operation.category)}">
+                        ${getCategoryIcon(operation.category)} ${operation.category}
+                    </span>
+                    <span class="level-badge ${getLevelClass(operation.reconditioning_level)}">
+                        ${getLevelText(operation.reconditioning_level)}
+                    </span>
+                    ${operation.estimated_duration ? `
+                        <span class="text-muted">
+                            <i class="fas fa-clock me-1"></i>${operation.estimated_duration}h/${operation.unit || 'pièce'}
+                        </span>
+                    ` : ''}
+                    <span class="badge ${operation.is_active ? 'bg-success' : 'bg-secondary'}">
+                        ${operation.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+                ${operation.description ? `
+                    <div class="text-muted small mt-2">${operation.description}</div>
+                ` : ''}
+                <div class="operation-actions mt-3" onclick="event.stopPropagation()">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editOperation('${operation.id}')" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-${operation.is_active ? 'warning' : 'success'} btn-sm" 
+                            onclick="toggleOperationStatus('${operation.id}')" 
+                            title="${operation.is_active ? 'Désactiver' : 'Activer'}">
+                        <i class="fas fa-${operation.is_active ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteOperation('${operation.id}')" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getCategoryClass(category) {
+        const classes = {
+            'PRODUCTION': 'production',
+            'LOGISTIQUE': 'logistics',
+            'OPERATION LIGHT': 'light',
+            'ORGANISATION': 'organization',
+            'REPRESENTATION': 'representation'
+        };
+        return classes[category] || 'secondary';
+    }
+
+    function getCategoryIcon(category) {
+        const icons = {
+            'PRODUCTION': '<i class="fas fa-cogs me-1"></i>',
+            'LOGISTIQUE': '<i class="fas fa-truck me-1"></i>',
+            'OPERATION LIGHT': '<i class="fas fa-feather me-1"></i>',
+            'ORGANISATION': '<i class="fas fa-sitemap me-1"></i>',
+            'REPRESENTATION': '<i class="fas fa-handshake me-1"></i>'
+        };
+        return icons[category] || '<i class="fas fa-cog me-1"></i>';
+    }
+
+    function getLevelClass(level) {
+        if (level === 1) return 'level-1';
+        if (level === 2) return 'level-2';
+        if (level === 3) return 'level-3';
+        return 'level-undefined';
+    }
+
+    function getLevelText(level) {
+        if (level === 1) return 'Niveau 1';
+        if (level === 2) return 'Niveau 2';
+        if (level === 3) return 'Niveau 3';
+        return 'Non défini';
+    }
+
+    function filterOperations() {
+        const searchTerm = document.getElementById('searchOperations').value.toLowerCase();
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const levelFilter = document.getElementById('levelFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        let filteredOps = allOperations.filter(operation => {
+            const matchesSearch = !searchTerm || 
+                operation.name.toLowerCase().includes(searchTerm) ||
+                operation.description?.toLowerCase().includes(searchTerm);
+            
+            const matchesCategory = !categoryFilter || operation.category === categoryFilter;
+            
+            let matchesLevel = true;
+            if (levelFilter) {
+                if (levelFilter === 'undefined') {
+                    matchesLevel = !operation.reconditioning_level;
+                } else {
+                    matchesLevel = operation.reconditioning_level == levelFilter;
+                }
+            }
+            
+            let matchesStatus = true;
+            if (statusFilter === 'active') matchesStatus = operation.is_active;
+            else if (statusFilter === 'inactive') matchesStatus = !operation.is_active;
+            
+            return matchesSearch && matchesCategory && matchesLevel && matchesStatus;
+        });
+        
+        operations = filteredOps;
+        loadOperationsList();
+    }
+
+    // Navigation
+    function showOperationsList() {
+        document.getElementById('operationFormView').classList.add('hidden');
+        document.getElementById('operationsListView').classList.remove('hidden');
+        operations = [...allOperations];
+        loadOperationsList();
+    }
+
+    function showCreateOperationForm() {
+        document.getElementById('operationsListView').classList.add('hidden');
+        document.getElementById('operationFormView').classList.remove('hidden');
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus me-3"></i>Nouvelle Opération';
+        document.getElementById('saveButtonText').textContent = 'Créer l\'Opération';
+        document.getElementById('operationForm').reset();
+        document.getElementById('editOperationId').value = '';
+        document.getElementById('operationActive').checked = true;
+        resetLevelSelection();
+    }
+
+    function editOperation(operationId) {
+        const operation = allOperations.find(op => op.id == operationId);
+        if (!operation) return;
+
+        document.getElementById('operationsListView').classList.add('hidden');
+        document.getElementById('operationFormView').classList.remove('hidden');
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit me-3"></i>Modifier l\'Opération';
+        document.getElementById('saveButtonText').textContent = 'Mettre à Jour';
+        
+        // Remplir le formulaire
+        document.getElementById('editOperationId').value = operation.id;
+        document.getElementById('operationName').value = operation.name;
+        document.getElementById('operationCategory').value = operation.category;
+        document.getElementById('operationDescription').value = operation.description || '';
+        document.getElementById('operationDuration').value = operation.estimated_duration || '';
+        document.getElementById('operationUnit').value = operation.unit || 'pièce';
+        document.getElementById('operationActive').checked = operation.is_active;
+        
+        selectLevel(operation.reconditioning_level);
+    }
+
+    function selectLevel(level) {
+        // Réinitialiser toutes les sélections
+        document.querySelectorAll('.level-option').forEach(opt => opt.classList.remove('selected'));
+        
+        // Sélectionner le niveau approprié
+        if (level === 1) {
+            document.querySelector('.level-option.level-1').classList.add('selected');
+        } else if (level === 2) {
+            document.querySelector('.level-option.level-2').classList.add('selected');
+        } else if (level === 3) {
+            document.querySelector('.level-option.level-3').classList.add('selected');
+        } else {
+            document.querySelector('.level-option:last-child').classList.add('selected');
+        }
+        
+        document.getElementById('operationLevel').value = level || '';
+    }
+
+    function resetLevelSelection() {
+        document.querySelectorAll('.level-option').forEach(opt => opt.classList.remove('selected'));
+        document.getElementById('operationLevel').value = '';
+    }
+
+    async function saveOperation(event) {
+        event.preventDefault();
+        
+        const operationId = document.getElementById('editOperationId').value;
+        const operationData = {
+            name: document.getElementById('operationName').value.trim(),
+            category: document.getElementById('operationCategory').value,
+            description: document.getElementById('operationDescription').value.trim() || null,
+            reconditioning_level: document.getElementById('operationLevel').value ? parseInt(document.getElementById('operationLevel').value) : null,
+            average_time_per_unit: document.getElementById('operationDuration').value ? parseFloat(document.getElementById('operationDuration').value) : null,
+            unit: document.getElementById('operationUnit').value,
+            is_active: document.getElementById('operationActive').checked
+        };
+
+        // Validation
+        if (!operationData.name || !operationData.category) {
+            showToast('Veuillez remplir au moins le nom et la catégorie', 'warning');
+            return;
+        }
+
+        try {
+            if (supabaseLoaded) {
+                // Sauvegarde en base
+                let result;
+                
+                if (operationId) {
+                    operationData.updated_at = new Date().toISOString();
+                    result = await supabase
+                        .from('operations')
+                        .update(operationData)
+                        .eq('id', operationId)
+                        .select()
+                        .single();
+                } else {
+                    result = await supabase
+                        .from('operations')
+                        .insert(operationData)
+                        .select()
+                        .single();
+                }
+
+                if (result.error) throw result.error;
+
+                if (operationId) {
+                    const index = allOperations.findIndex(op => op.id == operationId);
+                    if (index !== -1) allOperations[index] = result.data;
+                } else {
+                    allOperations.unshift(result.data);
+                }
+            } else {
+                // Mode hors-ligne
+                if (operationId) {
+                    const index = allOperations.findIndex(op => op.id == operationId);
+                    if (index !== -1) {
+                        allOperations[index] = { ...allOperations[index], ...operationData, updated_at: new Date().toISOString() };
+                    }
+                } else {
+                    const newOperation = {
+                        id: Math.max(...allOperations.map(op => op.id || 0), 0) + 1,
+                        ...operationData,
+                        created_at: new Date().toISOString()
+                    };
+                    allOperations.unshift(newOperation);
+                }
+            }
+
+            operations = [...allOperations];
+            updateStats();
+            showOperationsList();
+            showToast(operationId ? 'Opération modifiée avec succès' : 'Opération créée avec succès', 'success');
+
+        } catch (error) {
+            console.error('Erreur sauvegarde:', error);
+            showToast('Erreur: ' + error.message, 'danger');
+        }
+    }
+
+    async function toggleOperationStatus(operationId) {
+        const operation = allOperations.find(op => op.id == operationId);
+        if (!operation) return;
+
+        const newStatus = !operation.is_active;
+
+        try {
+            if (supabaseLoaded) {
+                const { data, error } = await supabase
+                    .from('operations')
+                    .update({ 
+                        is_active: newStatus,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', operationId)
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                Object.assign(operation, data);
+            } else {
+                operation.is_active = newStatus;
+                operation.updated_at = new Date().toISOString();
+            }
+            
+            operations = [...allOperations];
+            loadOperationsList();
+            updateStats();
+            showToast(`Opération ${newStatus ? 'activée' : 'désactivée'}`, 'success');
+            
+        } catch (error) {
+            console.error('Erreur:', error);
+            showToast('Erreur: ' + error.message, 'danger');
+        }
+    }
+
+    async function deleteOperation(operationId) {
+        const operation = allOperations.find(op => op.id == operationId);
+        if (!operation) return;
+
+        if (!confirm(`Supprimer définitivement l'opération "${operation.name}" ?\n\nCette action est irréversible.`)) {
+            return;
+        }
+
+        try {
+            if (supabaseLoaded) {
+                const { error } = await supabase
+                    .from('operations')
+                    .delete()
+                    .eq('id', operationId);
+                
+                if (error) throw error;
+            }
+            
+            allOperations = allOperations.filter(op => op.id != operationId);
+            operations = [...allOperations];
+            loadOperationsList();
+            updateStats();
+            showToast('Opération supprimée', 'success');
+            
+        } catch (error) {
+            console.error('Erreur:', error);
+            showToast('Erreur: ' + error.message, 'danger');
+        }
+    }
+
+    function viewOperationDetails(operationId) {
+        // Ici on pourrait ouvrir une modal avec les détails complets
+        showToast('Détails de l\'opération - Fonctionnalité à développer', 'info');
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} position-fixed`;
+        toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+        toast.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+</script>
+</body>
+</html>

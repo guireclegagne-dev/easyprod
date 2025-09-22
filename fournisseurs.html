@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyProd by Luceleanne - Gestion Fournisseurs</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --supplier-color: #34495e;
+            --supplier-light: #5d6d7e;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin-top: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 80vh;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--supplier-color), var(--supplier-light));
+            color: white;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            transform: translate(-50px, 50px);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 600;
+            z-index: 2;
+            position: relative;
+        }
+
+        .page-header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+            z-index: 2;
+            position: relative;
+        }
+
+        .btn-create {
+            background: var(--success-color);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            z-index: 2;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .btn-create:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .search-filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 10px 15px 10px 40px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            border-color: var(--supplier-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 73, 94, 0.25);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        .filter-select {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            min-width: 150px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .table-modern {
+            margin: 0;
+        }
+
+        .table-modern thead th {
+            background: var(--supplier-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table-modern tbody td {
+            padding: 15px;
+            border-top: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+        }
+
+        .supplier-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .supplier-icon {
+            width: 45px;
+            height: 45px;
+            background: var(--supplier-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .supplier-details h6 {
+            margin: 0;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .supplier-details small {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+
+        .category-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .category-marchandise {
+            background: #e8f5e8;
+            color: #27ae60;
+        }
+
+        .category-prestation {
+            background: #e8f4fd;
+            color: #3498db;
+        }
+
+        .category-mixte {
+            background: #fff3cd;
+            color: #f39c12;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #27ae60;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #e74c3c;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn-action {
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-catalog {
+            background: var(--supplier-color);
+            color: white;
+        }
+
+        .btn-catalog:hover {
+            background: var(--supplier-light);
+            transform: scale(1.1);
+        }
+
+        .btn-edit {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #e67e22;
+            transform: scale(1.1);
+        }
+
+        .btn-toggle {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .btn-toggle:hover {
+            background: #138496;
+            transform: scale(1.1);
+        }
+
+        .btn-delete {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+
+        .no-data i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Modal Styles */
+        .modal-header {
+            background: var(--supplier-color);
+            color: white;
+            border-bottom: none;
+        }
+
+        .modal-header .btn-close {
+            filter: invert(1);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--supplier-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 73, 94, 0.25);
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .connection-status.connected {
+            background: var(--success-color);
+        }
+
+        .connection-status.connecting {
+            background: var(--warning-color);
+        }
+
+        .connection-status.disconnected {
+            background: var(--danger-color);
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+
+            .search-filters {
+                flex-direction: column;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-industry me-2"></i>EasyProd</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+    <div class="navbar-nav ms-auto">
+        <a href="console-admin-standalone.html" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left me-2"></i>Retour Console
+        </a>
+    </div>
+</div>
+        </div>
+    </nav>
+
+    <!-- Status de connexion -->
+    <div id="connectionStatus" class="connection-status connecting">
+        <i class="fas fa-spinner fa-spin me-2"></i>Connexion...
+    </div>
+
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- En-tête -->
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-truck me-3"></i>Gestion des Fournisseurs</h1>
+                    <p>Gérez vos partenaires fournisseurs et leurs catalogues</p>
+                </div>
+                <button class="btn btn-create btn-lg" onclick="showCreateSupplierModal()">
+                    <i class="fas fa-plus me-2"></i>Nouveau Fournisseur
+                </button>
+            </div>
+
+            <!-- Zone de contenu -->
+            <div class="content-area">
+                <!-- Filtres -->
+                <div class="filters-section">
+                    <div class="search-filters">
+                        <div class="search-box">
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Rechercher un fournisseur par raison sociale, contact ou email...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <select class="form-select filter-select" id="categoryFilter" onchange="filterSuppliers()">
+                            <option value="">Toutes les catégories</option>
+                            <option value="marchandise">Marchandise</option>
+                            <option value="prestation">Prestation</option>
+                            <option value="mixte">Mixte</option>
+                        </select>
+                        <select class="form-select filter-select" id="statusFilter" onchange="filterSuppliers()">
+                            <option value="">Tous les statuts</option>
+                            <option value="true">Actifs</option>
+                            <option value="false">Inactifs</option>
+                        </select>
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshSuppliers()">
+                            <i class="fas fa-sync me-1"></i>Actualiser
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table des fournisseurs -->
+                <div class="table-container">
+                    <div class="table-responsive">
+                        <table class="table table-modern table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fournisseur</th>
+                                    <th>SIRET</th>
+                                    <th>Contact</th>
+                                    <th>Catégorie</th>
+                                    <th>Conditions Paiement</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suppliersTable">
+                                <tr>
+                                    <td colspan="7" class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i> Chargement des fournisseurs...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Création/Édition Fournisseur -->
+    <div class="modal fade" id="supplierModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="supplierModalTitle">
+                        <i class="fas fa-truck me-2"></i>Nouveau Fournisseur
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="supplierForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="companyName" class="form-label">Raison Sociale *</label>
+                                    <input type="text" class="form-control" id="companyName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="siret" class="form-label">SIRET *</label>
+                                    <input type="text" class="form-control" id="siret" 
+                                           pattern="[0-9]{14}" title="Le SIRET doit contenir 14 chiffres" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="contactLastName" class="form-label">Nom Contact *</label>
+                                    <input type="text" class="form-control" id="contactLastName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="contactFirstName" class="form-label">Prénom Contact *</label>
+                                    <input type="text" class="form-control" id="contactFirstName" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="contactEmail" class="form-label">Email Contact *</label>
+                                    <input type="email" class="form-control" id="contactEmail" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="contactPhone" class="form-label">Téléphone</label>
+                                    <input type="tel" class="form-control" id="contactPhone" 
+                                           pattern="[0-9\s\-\+\(\)\.]{10,}" title="Format de téléphone valide requis">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">Catégorie *</label>
+                                    <select class="form-select" id="category" required>
+                                        <option value="">Sélectionnez une catégorie</option>
+                                        <option value="marchandise">Marchandise</option>
+                                        <option value="prestation">Prestation</option>
+                                        <option value="mixte">Mixte</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="paymentTerms" class="form-label">Conditions de Paiement</label>
+                                    <select class="form-select" id="paymentTerms">
+                                        <option value="">Sélectionnez les conditions</option>
+                                        <option value="30_jours">30 jours net</option>
+                                        <option value="45_jours">45 jours net</option>
+                                        <option value="60_jours">60 jours net</option>
+                                        <option value="comptant">Comptant</option>
+                                        <option value="30_jours_fin_mois">30 jours fin de mois</option>
+                                        <option value="45_jours_fin_mois">45 jours fin de mois</option>
+                                        <option value="60_jours_fin_mois">60 jours fin de mois</option>
+                                        <option value="virement_reception">Virement à réception</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="isActive" checked>
+                                    <label class="form-check-label" for="isActive">
+                                        Fournisseur actif
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="supplierId">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-success" onclick="saveSupplier()">
+                        <i class="fas fa-save me-2"></i>Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+        // Configuration Supabase
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+<script>
+
+let suppliers = [];
+let filteredSuppliers = [];
+let editingSupplier = null;
+let supabase = null;
+let supabaseLoaded = false;
+
+function logout() {
+    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+        window.location.href = 'console-admin-standalone.html';
+    }
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    initApp();
+});
+
+async function initApp() {
+    updateConnectionStatus('connecting', 'Connexion...');
+    await initSupabase();
+    setupEventListeners();
+}
+
+async function initSupabase() {
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        await loadSuppliersFromDB();
+        supabaseLoaded = true;
+        updateConnectionStatus('connected', 'Base de données connectée');
+    } catch (error) {
+        console.error('Erreur Supabase:', error);
+        updateConnectionStatus('disconnected', 'Mode hors-ligne');
+        loadSampleSuppliers();
+    }
+}
+
+async function loadSuppliersFromDB() {
+    try {
+        const { data, error } = await supabase
+            .from('suppliers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            if (error.message.includes('relation "suppliers" does not exist')) {
+                showNotification('Table suppliers non trouvée. Veuillez exécuter le script SQL fourni.', 'error');
+                loadSampleSuppliers();
+                return;
+            }
+            throw error;
+        }
+
+        suppliers = data.map(supplier => ({
+            id: supplier.id,
+            companyName: supplier.company_name,
+            siret: supplier.siret,
+            contactLastName: supplier.contact_last_name,
+            contactFirstName: supplier.contact_first_name,
+            contactEmail: supplier.contact_email,
+            contactPhone: supplier.contact_phone,
+            category: supplier.category,
+            paymentTerms: supplier.payment_terms,
+            isActive: supplier.is_active,
+            createdAt: supplier.created_at
+        }));
+        
+        console.log(`${suppliers.length} fournisseurs chargés depuis la base de données`);
+        
+    } catch (error) {
+        console.error('Erreur lors du chargement:', error);
+        throw error;
+    }
+
+    filteredSuppliers = suppliers;
+    updateSuppliersTable();
+}
+
+function setupEventListeners() {
+    document.getElementById('searchInput').addEventListener('keyup', filterSuppliers);
+    document.getElementById('categoryFilter').addEventListener('change', filterSuppliers);
+    document.getElementById('statusFilter').addEventListener('change', filterSuppliers);
+    
+    // Validation SIRET en temps réel
+    const siretInput = document.getElementById('siret');
+    if (siretInput) {
+        siretInput.addEventListener('input', function() {
+            const value = this.value.replace(/\D/g, '');
+            this.value = value.substring(0, 14);
+            
+            if (value.length === 14) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else if (value.length > 0) {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+    }
+
+    // Formatage téléphone
+    const phoneInput = document.getElementById('contactPhone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            
+            if (value.length <= 10) {
+                value = value.replace(/(\d{2})(?=\d)/g, '$1 ');
+            }
+            
+            this.value = value;
+        });
+    }
+}
+
+function loadSampleSuppliers() {
+    console.log('Chargement des données d\'exemple...');
+    suppliers = [
+        {
+            id: 1,
+            companyName: 'Matériaux Pro Industries',
+            siret: '12345678901234',
+            contactLastName: 'Dubois',
+            contactFirstName: 'Michel',
+            contactEmail: 'm.dubois@materiaux-pro.fr',
+            contactPhone: '01 23 45 67 89',
+            category: 'marchandise',
+            paymentTerms: '30_jours',
+            isActive: true,
+            createdAt: '2024-01-15T10:30:00Z'
+        },
+        {
+            id: 2,
+            companyName: 'Services Maintenance Express',
+            siret: '23456789012345',
+            contactLastName: 'Martin',
+            contactFirstName: 'Sophie',
+            contactEmail: 's.martin@maintenance-express.fr',
+            contactPhone: '02 34 56 78 90',
+            category: 'prestation',
+            paymentTerms: '45_jours',
+            isActive: true,
+            createdAt: '2024-02-10T14:20:00Z'
+        },
+        {
+            id: 3,
+            companyName: 'Logistique & Fournitures SA',
+            siret: '34567890123456',
+            contactLastName: 'Leroy',
+            contactFirstName: 'Pierre',
+            contactEmail: 'p.leroy@logistique-fournitures.fr',
+            contactPhone: '03 45 67 89 01',
+            category: 'mixte',
+            paymentTerms: '30_jours_fin_mois',
+            isActive: true,
+            createdAt: '2024-01-05T09:15:00Z'
+        },
+        {
+            id: 4,
+            companyName: 'TechnoServices Innovation',
+            siret: '45678901234567',
+            contactLastName: 'Garcia',
+            contactFirstName: 'Ana',
+            contactEmail: 'a.garcia@technoservices.fr',
+            contactPhone: '04 56 78 90 12',
+            category: 'prestation',
+            paymentTerms: '60_jours',
+            isActive: false,
+            createdAt: '2024-03-20T16:45:00Z'
+        }
+    ];
+    
+    filteredSuppliers = suppliers;
+    updateSuppliersTable();
+}
+
+function filterSuppliers() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    filteredSuppliers = suppliers.filter(supplier => {
+        const matchesSearch = 
+            supplier.companyName.toLowerCase().includes(search) ||
+            supplier.contactLastName.toLowerCase().includes(search) ||
+            supplier.contactFirstName.toLowerCase().includes(search) ||
+            supplier.contactEmail.toLowerCase().includes(search) ||
+            supplier.siret.includes(search);
+
+        const matchesCategory = !categoryFilter || supplier.category === categoryFilter;
+        const matchesStatus = !statusFilter || supplier.isActive.toString() === statusFilter;
+
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    updateSuppliersTable();
+}
+
+function updateSuppliersTable() {
+    const tbody = document.getElementById('suppliersTable');
+    
+    if (filteredSuppliers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="no-data">
+                    <i class="fas fa-truck"></i>
+                    <h5>Aucun fournisseur trouvé</h5>
+                    <p>Aucun fournisseur ne correspond aux critères de recherche.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filteredSuppliers.map(supplier => `
+        <tr>
+            <td>
+                <div class="supplier-info">
+                    <div class="supplier-icon">
+                        ${supplier.companyName.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div class="supplier-details">
+                        <h6>${supplier.companyName}</h6>
+                        <small>Créé le ${new Date(supplier.createdAt).toLocaleDateString('fr-FR')}</small>
+                    </div>
+                </div>
+            </td>
+            <td><strong>${supplier.siret}</strong></td>
+            <td>
+                <div>
+                    <strong>${supplier.contactFirstName} ${supplier.contactLastName}</strong><br>
+                    <small class="text-muted">${supplier.contactEmail}</small><br>
+                    <small class="text-muted">${supplier.contactPhone || 'N/A'}</small>
+                </div>
+            </td>
+            <td>
+                <span class="category-badge category-${supplier.category}">
+                    ${getCategoryLabel(supplier.category)}
+                </span>
+            </td>
+            <td>${getPaymentTermsLabel(supplier.paymentTerms)}</td>
+            <td>
+                <span class="status-badge ${supplier.isActive ? 'status-active' : 'status-inactive'}">
+                    ${supplier.isActive ? 'Actif' : 'Inactif'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-catalog" title="Catalogue" 
+                            onclick="viewCatalog(${supplier.id})">
+                        <i class="fas fa-book"></i>
+                    </button>
+                    <button class="btn-action btn-edit" title="Modifier" 
+                            onclick="editSupplier(${supplier.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-action btn-toggle" title="${supplier.isActive ? 'Désactiver' : 'Activer'}" 
+                            onclick="toggleSupplier(${supplier.id})">
+                        <i class="fas fa-${supplier.isActive ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn-action btn-delete" title="Supprimer" 
+                            onclick="deleteSupplier(${supplier.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getCategoryLabel(category) {
+    const labels = {
+        'marchandise': 'Marchandise',
+        'prestation': 'Prestation',
+        'mixte': 'Mixte'
+    };
+    return labels[category] || category;
+}
+
+function getPaymentTermsLabel(terms) {
+    const labels = {
+        '30_jours': '30 jours net',
+        '45_jours': '45 jours net',
+        '60_jours': '60 jours net',
+        'comptant': 'Comptant',
+        '30_jours_fin_mois': '30j fin mois',
+        '45_jours_fin_mois': '45j fin mois',
+        '60_jours_fin_mois': '60j fin mois',
+        'virement_reception': 'Virement réception'
+    };
+    return labels[terms] || terms || 'Non défini';
+}
+
+function showCreateSupplierModal() {
+    editingSupplier = null;
+    document.getElementById('supplierModalTitle').innerHTML = '<i class="fas fa-truck me-2"></i>Nouveau Fournisseur';
+    document.getElementById('supplierForm').reset();
+    document.getElementById('isActive').checked = true;
+    document.getElementById('supplierId').value = '';
+    new bootstrap.Modal(document.getElementById('supplierModal')).show();
+}
+
+function editSupplier(id) {
+    const supplier = suppliers.find(s => s.id === id);
+    if (!supplier) return;
+
+    editingSupplier = supplier;
+    document.getElementById('supplierModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Modifier Fournisseur';
+    
+    document.getElementById('companyName').value = supplier.companyName;
+    document.getElementById('siret').value = supplier.siret;
+    document.getElementById('contactLastName').value = supplier.contactLastName;
+    document.getElementById('contactFirstName').value = supplier.contactFirstName;
+    document.getElementById('contactEmail').value = supplier.contactEmail;
+    document.getElementById('contactPhone').value = supplier.contactPhone || '';
+    document.getElementById('category').value = supplier.category;
+    document.getElementById('paymentTerms').value = supplier.paymentTerms || '';
+    document.getElementById('isActive').checked = supplier.isActive;
+    document.getElementById('supplierId').value = supplier.id;
+
+    new bootstrap.Modal(document.getElementById('supplierModal')).show();
+}
+
+async function saveSupplier() {
+    const form = document.getElementById('supplierForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const supplierData = {
+        companyName: document.getElementById('companyName').value.trim(),
+        siret: document.getElementById('siret').value.trim(),
+        contactLastName: document.getElementById('contactLastName').value.trim(),
+        contactFirstName: document.getElementById('contactFirstName').value.trim(),
+        contactEmail: document.getElementById('contactEmail').value.trim(),
+        contactPhone: document.getElementById('contactPhone').value.trim(),
+        category: document.getElementById('category').value,
+        paymentTerms: document.getElementById('paymentTerms').value,
+        isActive: document.getElementById('isActive').checked
+    };
+
+    if (!/^[0-9]{14}$/.test(supplierData.siret)) {
+        alert('Le SIRET doit contenir exactement 14 chiffres.');
+        return;
+    }
+
+    const existingSupplier = suppliers.find(s => 
+        s.siret === supplierData.siret && 
+        (!editingSupplier || s.id !== editingSupplier.id)
+    );
+    if (existingSupplier) {
+        alert('Un fournisseur avec ce SIRET existe déjà.');
+        return;
+    }
+
+    try {
+        if (supabaseLoaded) {
+            await saveSupplierToDB(supplierData);
+        } else {
+            await saveSupplierLocally(supplierData);
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('supplierModal')).hide();
+        filterSuppliers();
+        showNotification(editingSupplier ? 'Fournisseur modifié avec succès!' : 'Fournisseur créé avec succès!', 'success');
+
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde:', error);
+        showNotification('Erreur lors de la sauvegarde: ' + error.message, 'error');
+    }
+}
+
+async function saveSupplierToDB(supplierData) {
+    const dbData = {
+        company_name: supplierData.companyName,
+        siret: supplierData.siret,
+        contact_last_name: supplierData.contactLastName,
+        contact_first_name: supplierData.contactFirstName,
+        contact_email: supplierData.contactEmail,
+        contact_phone: supplierData.contactPhone || null,
+        category: supplierData.category,
+        payment_terms: supplierData.paymentTerms || null,
+        is_active: supplierData.isActive
+    };
+
+    if (editingSupplier) {
+        const { data, error } = await supabase
+            .from('suppliers')
+            .update(dbData)
+            .eq('id', editingSupplier.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const index = suppliers.findIndex(s => s.id === editingSupplier.id);
+        suppliers[index] = {
+            ...editingSupplier,
+            ...supplierData,
+            updatedAt: data.updated_at
+        };
+
+    } else {
+        const { data, error } = await supabase
+            .from('suppliers')
+            .insert([dbData])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const newSupplier = {
+            id: data.id,
+            ...supplierData,
+            createdAt: data.created_at
+        };
+        suppliers.unshift(newSupplier);
+    }
+}
+
+async function saveSupplierLocally(supplierData) {
+    if (editingSupplier) {
+        const index = suppliers.findIndex(s => s.id === editingSupplier.id);
+        suppliers[index] = { ...suppliers[index], ...supplierData };
+    } else {
+        const newSupplier = {
+            id: Math.max(...suppliers.map(s => s.id), 0) + 1,
+            ...supplierData,
+            createdAt: new Date().toISOString()
+        };
+        suppliers.unshift(newSupplier);
+    }
+}
+
+async function toggleSupplier(id) {
+    const supplier = suppliers.find(s => s.id === id);
+    if (!supplier) return;
+
+    const action = supplier.isActive ? 'désactiver' : 'activer';
+    if (confirm(`Êtes-vous sûr de vouloir ${action} ce fournisseur ?`)) {
+        try {
+            if (supabaseLoaded) {
+                const { error } = await supabase
+                    .from('suppliers')
+                    .update({ is_active: !supplier.isActive })
+                    .eq('id', supplier.id);
+
+                if (error) throw error;
+            }
+
+            supplier.isActive = !supplier.isActive;
+            filterSuppliers();
+            showNotification(`Fournisseur ${supplier.isActive ? 'activé' : 'désactivé'} avec succès!`, 'info');
+
+        } catch (error) {
+            console.error('Erreur lors du changement de statut:', error);
+            showNotification('Erreur lors du changement de statut: ' + error.message, 'error');
+        }
+    }
+}
+
+async function deleteSupplier(id) {
+    const supplier = suppliers.find(s => s.id === id);
+    if (!supplier) return;
+
+    if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement le fournisseur "${supplier.companyName}" ?\n\nCette action est irréversible.`)) {
+        try {
+            if (supabaseLoaded) {
+                const { error } = await supabase
+                    .from('suppliers')
+                    .delete()
+                    .eq('id', supplier.id);
+
+                if (error) throw error;
+            }
+
+            suppliers = suppliers.filter(s => s.id !== id);
+            filterSuppliers();
+            showNotification('Fournisseur supprimé avec succès!', 'success');
+
+        } catch (error) {
+            console.error('Erreur lors de la suppression:', error);
+            showNotification('Erreur lors de la suppression: ' + error.message, 'error');
+        }
+    }
+}
+
+function viewCatalog(id) {
+    const supplier = suppliers.find(s => s.id === id);
+    if (!supplier) return;
+
+    showNotification(`Ouverture du catalogue de ${supplier.companyName}...`, 'info');
+    
+    setTimeout(() => {
+        alert(`Catalogue de ${supplier.companyName}\n\nCette fonctionnalité sera développée dans une prochaine conversation comme convenu.`);
+    }, 1000);
+}
+
+async function refreshSuppliers() {
+    updateConnectionStatus('connecting', 'Actualisation...');
+    
+    try {
+        if (supabaseLoaded) {
+            await loadSuppliersFromDB();
+        } else {
+            loadSampleSuppliers();
+        }
+        updateConnectionStatus('connected', 'Connecté');
+        showNotification('Liste des fournisseurs actualisée!', 'success');
+    } catch (error) {
+        console.error('Erreur lors du rafraîchissement:', error);
+        updateConnectionStatus('disconnected', 'Erreur de connexion');
+        showNotification('Erreur lors de l\'actualisation', 'error');
+    }
+}
+
+function updateConnectionStatus(status, message) {
+    const statusEl = document.getElementById('connectionStatus');
+    statusEl.className = `connection-status ${status}`;
+    statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-2"></i>${message}`;
+    
+    if (status === 'connected') {
+        setTimeout(() => {
+            statusEl.style.opacity = '0';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 300);
+        }, 3000);
+    } else {
+        statusEl.style.display = 'block';
+        statusEl.style.opacity = '1';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = '1055';
+    document.body.appendChild(container);
+    return container;
+}
+    </script>
+</body>
+</html>

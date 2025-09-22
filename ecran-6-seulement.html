@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation; user-select: none;
+    }
+    .screen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; color:white; }
+    h1 { font-size:2.2em; margin-bottom:30px; font-weight:300; text-align:center; }
+    .card { width:min(640px,95vw); padding:22px; border-radius:16px; background: rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.25); backdrop-filter: blur(10px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
+    .row { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:1.05em; }
+    .row i { width:24px; text-align:center; opacity:.95; }
+    .controls { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; transition: all 0.2s ease; }
+    .btn-white { background:#fff; color:#1f2937; }
+    .btn-white:hover { background:#f3f4f6; transform: translateY(-1px); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:10px; }
+    .grid .label { opacity:.95; }
+    .qty-box { display:flex; align-items:center; gap:10px; margin-top:8px; }
+    .qty-input { width:100%; padding:16px; font-size:1.6em; text-align:center; border:3px solid rgba(255,255,255,.3); border-radius:14px; background:rgba(255,255,255,.1); color:white; outline:none; }
+    .qty-btn { padding:12px 16px; font-size:1.2em; font-weight:700; border-radius:12px; border:2px solid rgba(255,255,255,.4); background:rgba(255,255,255,.15); color:white; cursor:pointer; transition: all 0.2s ease; }
+    .qty-btn:hover { background:rgba(255,255,255,.25); transform: scale(1.05); }
+    .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
+    .hidden { display:none !important; }
+    
+    .success-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.5s ease;
+    }
+    .success-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .success-content {
+      text-align: center;
+      color: white;
+    }
+    .success-icon {
+      font-size: 5em;
+      margin-bottom: 30px;
+      animation: bounce 1s infinite;
+    }
+    .success-title {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      font-weight: 300;
+    }
+    .success-text {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-20px); }
+      60% { transform: translateY(-10px); }
+    }
+    
+    @media (max-width: 480px) { 
+      .screen { padding:15px; } 
+      .card { padding:18px; } 
+      .success-title { font-size: 2em; }
+      .success-text { font-size: 1em; }
+    }
+  </style>
+  <script src="config.js"></script>
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+    const LS = {
+      op: 'prod_selected_operator',
+      pr: 'prod_selected_project',
+      opn: 'prod_selected_operation',
+      start: 'prod_started_at',
+      end: 'prod_ended_at',
+      exec: 'prod_execution_ms',
+      pause: 'prod_pause_ms',
+      taskId: 'current_task_id'
+    };
+    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+    function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
+  </script>
+
+<title>Finalisation — Écran 6</title>
+</head>
+<body>
+  <section class="screen" style="background: linear-gradient(135deg,#834d9b 0%,#d04ed6 100%);">
+    <h1><i class="fas fa-clipboard-check me-3"></i>Finaliser la tâche</h1>
+    <div class="card">
+      <div class="row"><i class="fas fa-user"></i> <span id="fOp">—</span></div>
+      <div class="row"><i class="fas fa-folder"></i> <span id="fProj">—</span></div>
+      <div class="row"><i class="fas fa-cog"></i> <span id="fOpn">—</span></div>
+      <div class="grid">
+        <div class="label"><i class="fas fa-clock"></i> Début</div><div id="startT">—</div>
+        <div class="label"><i class="fas fa-clock"></i> Fin</div><div id="endT">—</div>
+        <div class="label"><i class="fas fa-hourglass-half"></i> Durée</div><div id="dur">—</div>
+      </div>
+      <div class="row" style="margin-top:10px;"><i class="fas fa-boxes-stacked"></i><strong> Quantité produite</strong></div>
+      <div class="qty-box">
+        <button class="qty-btn" id="minusBtn">−</button>
+        <input type="number" id="quantityInput" class="qty-input" min="0" step="1" placeholder="0">
+        <button class="qty-btn" id="plusBtn">+</button>
+      </div>
+      <div class="controls">
+        <button class="btn btn-white" id="validateBtn" disabled>Valider</button>
+      </div>
+      <div class="statusbar" id="msg"></div>
+    </div>
+  </section>
+
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-content">
+      <div class="success-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h1 class="success-title" id="successTitle">Mission Accomplie !</h1>
+      <p class="success-text" id="successText">Bravo ! Votre travail de qualité<br>fait la différence.</p>
+    </div>
+  </div>
+
+<script>
+let supabase = null;
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
+  if(!op) return location.href='ecran-1-seulement.html';
+  if(!pr) return location.href='ecran-2-seulement.html';
+  if(!opn) return location.href='ecran-3-seulement.html';
+  
+  const start = getLS(LS.start), end = getLS(LS.end), exec = getLS(LS.exec), pause = getLS(LS.pause);
+
+  document.getElementById('fOp').textContent = op.name;
+  document.getElementById('fProj').textContent = pr.name;
+  document.getElementById('fOpn').textContent = opn.name;
+  document.getElementById('startT').textContent = start ? new Date(start).toLocaleTimeString() : '—';
+  document.getElementById('endT').textContent   = end ? new Date(end).toLocaleTimeString() : '—';
+  document.getElementById('dur').textContent    = exec ? fmtTime(exec) : '—';
+
+  const input = document.getElementById('quantityInput');
+  const minus = document.getElementById('minusBtn');
+  const plus  = document.getElementById('plusBtn');
+  const btn   = document.getElementById('validateBtn');
+  
+  const refresh = ()=>{ 
+    const v=parseInt(input.value||'0',10); 
+    btn.disabled = !(Number.isFinite(v) && v>0); 
+  };
+  
+  input.oninput=refresh; 
+  minus.onclick=()=>{ input.value=Math.max(0,(parseInt(input.value||'0',10)-1)); refresh(); };
+  plus.onclick =()=>{ input.value=(parseInt(input.value||'0',10)+1); refresh(); };
+  refresh();
+
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  btn.onclick = finalizeTask;
+});
+
+async function finalizeTask() {
+  const btn = document.getElementById('validateBtn');
+  const qty = parseInt(document.getElementById('quantityInput').value||'0',10); 
+  if(!qty||qty<=0) return;
+  
+  btn.disabled = true;
+  document.getElementById('msg').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalisation...';
+  
+  const taskId = getLS(LS.taskId);
+  
+  try {
+    if (taskId) {
+      // Mettre à jour la tâche existante avec la quantité et status final
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          quantity: qty,
+          status: 'completed'
+        })
+        .eq('id', taskId);
+        
+      if (error) throw error;
+      
+      document.getElementById('msg').textContent = 'Tâche finalisée avec succès !';
+      
+      // Nettoyer l'ID stocké
+      localStorage.removeItem(LS.taskId);
+      
+    } else {
+      // Mode offline - créer une insertion complète
+      const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
+      const start = getLS(LS.start), end = getLS(LS.end), exec = getLS(LS.exec), pause = getLS(LS.pause);
+      
+      const payload = {
+        operator_id: String(op.id),
+        operator_name: op.name,
+        project_id: pr.id,
+        project_name: pr.name,
+        operation_id: opn.id,
+        operation_name: opn.name,
+        started_at: start || null,
+        ended_at: end || new Date().toISOString(),
+        execution_ms: exec || null,
+        pause_ms: pause || 0,
+        quantity: qty,
+        status: 'completed'
+      };
+      
+      const { error } = await supabase.from('tasks').insert(payload);
+      if (error) throw error;
+      
+      document.getElementById('msg').textContent = 'Tâche enregistrée (mode offline)';
+    }
+    
+    // Afficher message de fin et rediriger
+    showSuccessAndRedirect();
+    
+  } catch(e) {
+    console.error('Erreur finalisation:', e);
+    document.getElementById('msg').textContent = 'Erreur: ' + (e.message || 'Impossible de finaliser');
+    btn.disabled = false;
+  }
+}
+
+function showSuccessAndRedirect() {
+  const messages = [
+    { title: 'Mission Accomplie !', text: 'Bravo ! Votre travail de qualité<br>fait la différence.' },
+    { title: 'Parfait !', text: 'Merci pour votre professionnalisme.<br>Continuez comme ça !' },
+    { title: 'Super Boulot !', text: 'Votre efficacité est remarquable.<br>Merci pour votre engagement.' },
+    { title: 'Formidable !', text: 'Chaque tâche accomplie nous rapproche<br>de nos objectifs. Merci !' },
+    { title: 'Excellent !', text: 'Votre dévouement est exemplaire.<br>Félicitations !' },
+    { title: 'Fantastique !', text: 'Votre savoir-faire est exceptionnel.<br>Bravo pour cette réalisation !' }
+  ];
+  
+  const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+  
+  document.getElementById('successTitle').textContent = randomMessage.title;
+  document.getElementById('successText').innerHTML = randomMessage.text;
+  
+  // Afficher l'overlay de succès
+  document.getElementById('successOverlay').classList.add('show');
+  
+  // Nettoyer les données locales
+  Object.values(LS).forEach(key => localStorage.removeItem(key));
+  
+  // Rediriger vers l'écran 1 après 5 secondes
+  setTimeout(() => {
+    window.location.href = 'ecran-1-seulement.html';
+  }, 5000);
+}
+</script>
+</body>
+</html>

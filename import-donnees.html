@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import de Données - Gestion CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .navbar {
+            background: rgba(44, 62, 80, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .main-container {
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .page-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .import-tabs {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            background: transparent;
+            color: var(--primary-color);
+            font-weight: 600;
+            padding: 15px 25px;
+            border-radius: 0;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .tab-content {
+            padding: 30px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #dee2e6;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            margin-bottom: 25px;
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--secondary-color);
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .upload-zone.processing {
+            border-color: var(--warning-color);
+            background: rgba(243, 156, 18, 0.1);
+        }
+
+        .upload-zone i {
+            font-size: 3em;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .upload-zone.dragover i {
+            color: var(--secondary-color);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: var(--secondary-color);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .data-preview {
+            margin-top: 25px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+
+        .preview-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .preview-table {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .error-row {
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .error-cell {
+            position: relative;
+        }
+
+        .error-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            color: var(--danger-color);
+            font-size: 0.8em;
+        }
+
+        .validation-summary {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .validation-summary.success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid var(--success-color);
+        }
+
+        .validation-summary.warning {
+            background: rgba(243, 156, 18, 0.1);
+            border: 1px solid var(--warning-color);
+        }
+
+        .correction-input {
+            background: #fff3cd;
+            border: 1px solid var(--warning-color);
+        }
+
+        .btn-import {
+            background: var(--success-color);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .btn-import:hover {
+            background: #229954;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .command-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+        }
+
+        .command-item {
+            padding: 15px;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background 0.2s;
+        }
+
+        .command-item:hover {
+            background: #f8f9fa;
+        }
+
+        .command-item:last-child {
+            border-bottom: none;
+        }
+
+        .command-ref {
+            font-weight: bold;
+            color: var(--primary-color);
+            font-size: 1.1em;
+        }
+
+        .command-client {
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+
+        .command-amount {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .btn-assign {
+            background: var(--info-color);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .suggestion-item {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid var(--secondary-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+
+        .conformity-alert {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--danger-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .conformity-ok {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .unassigned-commands-notice {
+            background: rgba(23, 162, 184, 0.1);
+            border: 1px solid var(--info-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn-group-vertical .btn {
+            margin-bottom: 2px;
+        }
+
+        .btn-group-vertical .btn:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-upload me-2"></i>
+                Import de Données
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user-shield me-1"></i>
+                    Administrateur
+                </span>
+                <a href="console-admin-standalone.html" class="btn btn-outline-light me-3">
+                        <i class="fas fa-arrow-left me-2"></i>Retour Console
+                    </a>
+                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="page-header">
+            <h1><i class="fas fa-file-import me-3"></i>Import de Données</h1>
+            <p class="mb-0">Importez vos clients, revendeurs et commandes Odoo</p>
+        </div>
+
+        <div class="container">
+            <div class="import-tabs">
+                <ul class="nav nav-tabs" id="importTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="clients-tab" data-bs-toggle="tab" 
+                                data-bs-target="#clients" type="button" role="tab">
+                            <i class="fas fa-users me-2"></i>Clients
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="revendeurs-tab" data-bs-toggle="tab" 
+                                data-bs-target="#revendeurs" type="button" role="tab">
+                            <i class="fas fa-handshake me-2"></i>Revendeurs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="projets-tab" data-bs-toggle="tab" 
+                                data-bs-target="#projets" type="button" role="tab">
+                            <i class="fas fa-project-diagram me-2"></i>Projets/Commandes
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="importTabContent">
+                    <!-- Onglet Clients -->
+                    <div class="tab-pane fade show active" id="clients" role="tabpanel">
+                        <h4><i class="fas fa-users me-2"></i>Import des Clients</h4>
+                        <p class="text-muted">Importez votre base clients depuis un fichier Excel</p>
+                        
+                        <div class="upload-zone" id="clientsUpload" onclick="document.getElementById('clientsFile').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h5>Glissez votre fichier Excel ici ou cliquez pour sélectionner</h5>
+                            <p class="text-muted mb-3">Format attendu : Raison sociale, Numéro, Rue, CP, Ville, SIRET, Nom contact, Tél contact, Email contact</p>
+                            <button type="button" class="btn upload-btn">
+                                <i class="fas fa-file-excel me-2"></i>Sélectionner un fichier
+                            </button>
+                        </div>
+                        <input type="file" id="clientsFile" class="file-input" accept=".xlsx,.xls" onchange="handleFileUpload(this, 'clients')">
+                        
+                        <div id="clientsPreview" class="data-preview" style="display: none;">
+                            <!-- Aperçu des données clients -->
+                        </div>
+                    </div>
+
+                    <!-- Onglet Revendeurs -->
+                    <div class="tab-pane fade" id="revendeurs" role="tabpanel">
+                        <h4><i class="fas fa-handshake me-2"></i>Import des Revendeurs</h4>
+                        <p class="text-muted">Importez votre base revendeurs depuis un fichier Excel</p>
+                        
+                        <div class="upload-zone" id="revendeursUpload" onclick="document.getElementById('revendeursFile').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h5>Glissez votre fichier Excel ici ou cliquez pour sélectionner</h5>
+                            <p class="text-muted mb-3">Format attendu : Raison sociale, Numéro, Rue, CP, Ville, SIRET, Nom contact, Tél contact, Email contact</p>
+                            <button type="button" class="btn upload-btn">
+                                <i class="fas fa-file-excel me-2"></i>Sélectionner un fichier
+                            </button>
+                        </div>
+                        <input type="file" id="revendeursFile" class="file-input" accept=".xlsx,.xls" onchange="handleFileUpload(this, 'revendeurs')">
+                        
+                        <div id="revendeursPreview" class="data-preview" style="display: none;">
+                            <!-- Aperçu des données revendeurs -->
+                        </div>
+                    </div>
+
+                    <!-- Onglet Projets/Commandes -->
+                    <div class="tab-pane fade" id="projets" role="tabpanel">
+                        <h4><i class="fas fa-project-diagram me-2"></i>Import Commandes Odoo</h4>
+                        <p class="text-muted">Importez les commandes depuis Odoo et affectez-les aux projets</p>
+                        
+                        <div class="upload-zone" id="projetsUpload" onclick="document.getElementById('projetsFile').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h5>Glissez votre export Odoo ici ou cliquez pour sélectionner</h5>
+                            <p class="text-muted mb-3">
+                                Export Odoo <strong>COMMANDES CONFIRMÉES uniquement</strong><br>
+                            <small>
+                                    ✓ Colonnes requises : Référence commande, Date de la commande, Site Web, Client, Vendeur, Activités, Total, État de la facture<br>
+                                    ✗ Les fichiers de DEVIS seront automatiquement rejetés
+                            </small>
+                            </p>
+                            <button type="button" class="btn upload-btn">
+                                <i class="fas fa-file-excel me-2"></i>Sélectionner l'export Odoo
+                            </button>
+                        </div>
+                        <input type="file" id="projetsFile" class="file-input" accept=".xlsx,.xls" onchange="handleFileUpload(this, 'projets')">
+                        
+                        <div id="projetsPreview" class="data-preview" style="display: none;">
+                            <!-- Aperçu et gestion des commandes -->
+                        </div>
+
+                        <div id="unassignedCommands" style="display: none;">
+                            <h5 class="mt-4"><i class="fas fa-tasks me-2"></i>Commandes Non Affectées</h5>
+                            <div id="commandsList" class="command-list">
+                                <!-- Liste des commandes non affectées -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal d'affectation de projet -->
+    <div class="modal fade" id="projectAssignModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        Affecter la commande <span id="modalCommandRef"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="projectSuggestions" style="display: none;">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Suggestions basées sur l'IA :</h6>
+                        <div id="suggestionsList"></div>
+                        <hr>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Choisir un projet existant :</label>
+                        <select class="form-select" id="existingProjects">
+                            <option value="">-- Sélectionner un projet --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="text-center mb-3">
+                        <strong>OU</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Créer un nouveau projet :</label>
+                        <input type="text" class="form-control" id="newProjectName" placeholder="Nom du nouveau projet">
+                    </div>
+
+                    <div id="conformityCheck" style="display: none;">
+                        <!-- Contrôle de conformité budgétaire -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="confirmAssign">Affecter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de mapping client -->
+    <div class="modal fade" id="clientMappingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-link me-2"></i>
+                        Associer le client
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Client trouvé dans Odoo : <strong id="odooClientName"></strong></p>
+                    <p class="text-muted">Aucune correspondance exacte trouvée. Veuillez sélectionner le client correspondant :</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Clients disponibles :</label>
+                        <select class="form-select" id="availableClients">
+                            <option value="">-- Sélectionner un client --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ignorer</button>
+                    <button type="button" class="btn btn-primary" id="confirmMapping">Associer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variables globales
+        let supabase = null;
+        let currentData = {};
+        let validationErrors = {};
+        let currentCommand = null;
+        let clientsDatabase = [];
+        let projectsDatabase = [];
+        let allUnassignedCommands = []; // Pour stocker toutes les commandes non affectées
+        function logout() {
+    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+        window.location.href = 'console-admin-standalone.html';
+    }
+}
+        function convertExcelDate(excelDate) {
+            if (!excelDate) return null;
+            
+            // Si c'est déjà une chaîne de date ISO, la retourner
+            if (typeof excelDate === 'string' && excelDate.includes('T')) {
+                return excelDate;
+            }
+            
+            // Convertir le numéro série Excel en date JavaScript
+            const jsDate = new Date((excelDate - 25569) * 86400 * 1000);
+            return jsDate.toISOString();
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSupabase();
+            setupDragAndDrop();
+            loadExistingData();
+        });
+
+        function initializeSupabase() {
+            try {
+                if (typeof window.supabase !== 'undefined') {
+                    supabase = window.supabase.createClient(
+                        'https://pekndazxlkxdhfgrdtyq.supabase.co',
+                        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBla25kYXp4bGt4ZGhmZ3JkdHlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODIzMzcsImV4cCI6MjA3MjQ1ODMzN30.McX9eQpaQ3SJfSTErz1dP0ixJl8tyK__aqyFrStnLvo'
+                    );
+                    console.log('Supabase initialisé');
+                }
+            } catch (error) {
+                console.error('Erreur Supabase:', error);
+            }
+        }
+
+        async function loadExistingData() {
+            try {
+                if (supabase) {
+                    // Charger les clients
+                    const { data: clients } = await supabase
+                        .from('clients')
+                        .select('id, raison_sociale');
+                    clientsDatabase = clients || [];
+
+                    // Charger les projets
+                    const { data: projects } = await supabase
+                        .from('projects')
+                        .select('id, name');
+                    projectsDatabase = projects || [];
+
+                    // Charger les commandes non affectées
+                    await loadUnassignedCommands();
+                }
+            } catch (error) {
+                console.error('Erreur chargement données:', error);
+            }
+        }
+
+        async function loadUnassignedCommands() {
+            try {
+                if (!supabase) return;
+
+                const { data: unassignedCommands, error } = await supabase
+                    .from('commandes_odoo')
+                    .select('*')
+                    .is('project_id', null)
+                    .neq('etat_facture', 'CLÔTURÉ')  // Ajouter cette ligne
+                    .order('created_at', { ascending: false });
+                if (error) {
+                    console.error('Erreur chargement commandes non affectées:', error);
+                    return;
+                }
+
+                allUnassignedCommands = unassignedCommands || [];
+
+                if (allUnassignedCommands.length > 0) {
+                    displayUnassignedCommands(allUnassignedCommands);
+                }
+            } catch (error) {
+                console.error('Erreur loadUnassignedCommands:', error);
+            }
+        }
+
+        function setupDragAndDrop() {
+            ['clients', 'revendeurs', 'projets'].forEach(type => {
+                const uploadZone = document.getElementById(`${type}Upload`);
+                
+                uploadZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.add('dragover');
+                });
+
+                uploadZone.addEventListener('dragleave', () => {
+                    uploadZone.classList.remove('dragover');
+                });
+
+                uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const fileInput = document.getElementById(`${type}File`);
+                        fileInput.files = files;
+                        handleFileUpload(fileInput, type);
+                    }
+                });
+            });
+        }
+
+        async function handleFileUpload(input, type) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const uploadZone = document.getElementById(`${type}Upload`);
+            uploadZone.classList.add('processing');
+
+            try {
+                const data = await readExcelFile(file);
+                currentData[type] = data;
+                
+                if (type === 'projets') {
+                    await processOdooCommands(data);
+                } else {
+                    await validateAndPreview(data, type);
+                }
+            } catch (error) {
+                showToast(`Erreur lors de la lecture du fichier: ${error.message}`, 'danger');
+            } finally {
+                uploadZone.classList.remove('processing');
+            }
+        }
+
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        resolve(jsonData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
+                reader.readAsBinaryString(file);
+            });
+        }
+        // FONCTION DE VALIDATION À AJOUTER DANS import-donnees.html
+
+// 1. Ajouter cette fonction avant processOdooCommands()
+function validateFileStructure(data) {
+    if (data.length < 2) {
+        return { isValid: false, error: 'Fichier vide ou incorrect' };
+    }
+
+    const headers = data[0];
+    
+    // Validation 1 : Vérifier le nombre de colonnes
+    if (headers.length !== 8) {
+        return { 
+            isValid: false, 
+            error: `Structure incorrecte : ${headers.length} colonnes trouvées, 8 attendues pour les commandes` 
+        };
+    }
+    
+    // Validation 2 : Vérifier les colonnes spécifiques aux commandes
+    const requiredColumns = [
+        'Référence commande',
+        'Date de la commande',    // Pas "Date de création" !
+        'Site Web',               // Absent des devis
+        'Client',
+        'Vendeur', 
+        'Activités',
+        'Total',
+        'État de la facture'      // Pas juste "État" !
+    ];
+    
+    for (let i = 0; i < requiredColumns.length; i++) {
+        if (!headers[i] || headers[i] !== requiredColumns[i]) {
+            return { 
+                isValid: false, 
+                error: `Colonne ${i + 1} incorrecte : "${headers[i]}" trouvée, "${requiredColumns[i]}" attendue` 
+            };
+        }
+    }
+    
+    // Validation 3 : Vérifier les états (critère principal)
+    const rows = data.slice(1).filter(row => row[0] && row[0].startsWith('S'));
+    const etats = [...new Set(rows.map(row => row[7]).filter(x => x))];
+    
+    const etatsCommandes = ['Rien à facturer', 'À facturer', 'Entièrement facturé'];
+    const etatsDevis = ['Bon de commande', 'Devis envoyé', 'Devis', 'Annulé'];
+    
+    const hasCommandStates = etats.some(etat => etatsCommandes.includes(etat));
+    const hasQuoteStates = etats.some(etat => etatsDevis.includes(etat));
+    
+    if (hasQuoteStates && !hasCommandStates) {
+        return { 
+            isValid: false, 
+            error: `⚠️ FICHIER DE DEVIS DÉTECTÉ !\n\nÉtats trouvés : ${etats.join(', ')}\n\nCe fichier contient des devis, pas des commandes.\nVeuillez utiliser le bon export Odoo (commandes confirmées uniquement).` 
+        };
+    }
+    
+    if (!hasCommandStates && etats.length > 0) {
+        return { 
+            isValid: false, 
+            error: `États non reconnus : ${etats.join(', ')}\nÉtats attendus pour les commandes : ${etatsCommandes.join(', ')}` 
+        };
+    }
+    
+    // Validation 4 : Vérifier la présence de la colonne "Site Web" (absente des devis)
+    if (!headers.includes('Site Web')) {
+        return { 
+            isValid: false, 
+            error: 'Colonne "Site Web" manquante - ceci ressemble à un export de devis, pas de commandes' 
+        };
+    }
+    
+    // Validation 5 : Détecter les colonnes de devis
+    const devisColumns = ['Étiquettes', 'Montant HT', 'Date de création'];
+    const hasDevisColumns = devisColumns.some(col => headers.includes(col));
+    
+    if (hasDevisColumns) {
+        const foundDevisColumns = devisColumns.filter(col => headers.includes(col));
+        return { 
+            isValid: false, 
+            error: `⚠️ EXPORT DE DEVIS DÉTECTÉ !\n\nColonnes de devis trouvées : ${foundDevisColumns.join(', ')}\n\nVeuillez utiliser l'export de commandes confirmées uniquement.` 
+        };
+    }
+    
+    return { isValid: true };
+}
+
+            // 2. Modifier la fonction processOdooCommands() en ajoutant la validation au début :
+        async function processOdooCommands(data) {
+            // AJOUTER CETTE VALIDATION AU DÉBUT
+            const validation = validateFileStructure(data);
+            if (!validation.isValid) {
+                showToast(validation.error, 'danger');
+        
+                // Afficher un modal d'alerte plus visible
+                showImportAlert(validation.error);
+                return;
+            }
+    
+            // Reste du code existant...
+            if (data.length < 2) {
+                showToast('Fichier vide ou incorrect', 'warning');
+                return;
+            }
+    
+            // ... continuer avec le code existant
+        }
+
+        // 3. Ajouter cette fonction pour afficher une alerte plus visible
+        function showImportAlert(message) {
+            // Créer un modal d'alerte
+            const alertModal = `
+                <div class="modal fade" id="importAlert" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content border-danger">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Import Refusé
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-danger">
+                                    <h6>Fichier non autorisé</h6>
+                                    <pre style="white-space: pre-wrap; font-family: inherit;">${message}</pre>
+                                </div>
+                                <p><strong>Solution :</strong> Utilisez l'export Odoo des commandes confirmées (pas les devis).</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    Compris
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+    
+            // Supprimer une éventuelle alerte existante
+            const existingAlert = document.getElementById('importAlert');
+            if (existingAlert) existingAlert.remove();
+    
+            // Ajouter la nouvelle alerte
+            document.body.insertAdjacentHTML('beforeend', alertModal);
+    
+            // Afficher la modal
+            new bootstrap.Modal(document.getElementById('importAlert')).show();
+        }
+
+        // 4. Ajouter un indicateur visuel sur la zone de upload
+        // Modifier la section HTML de upload pour inclure des indications :
+
+        // Dans la section <div class="upload-zone" id="projetsUpload">
+        // Remplacer le paragraphe d'aide par :
+        /*
+        <p class="text-muted mb-3">
+            Export Odoo <strong>COMMANDES CONFIRMÉES uniquement</strong><br>
+            <small>
+            ✓ Colonnes requises : Référence commande, Date de la commande, Site Web, Client, Vendeur, Activités, Total, État de la facture<br>
+            ✗ Les fichiers de DEVIS seront automatiquement rejetés
+            </small>
+        </p>
+        */
+        async function processOdooCommands(data) {
+            // VALIDATION SÉCURISÉE - À AJOUTER EN PREMIER
+            const validation = validateFileStructure(data);
+            if (!validation.isValid) {
+                showToast(validation.error, 'danger');
+                showImportAlert(validation.error);
+                return;
+            }
+            if (data.length < 2) {
+                showToast('Fichier vide ou incorrect', 'warning');
+                return;
+            }
+
+            const headers = data[0];
+            const commands = data.slice(1).map(row => ({
+                reference: row[0],
+                date_commande: row[1],
+                site_web: row[2],
+                client: row[3],
+                vendeur: row[4],
+                activites: row[5],
+                total_ttc: parseFloat(row[6]) || 0,
+                etat_facture: row[7]
+            })).filter(cmd => cmd.reference && cmd.reference.startsWith('S'));
+
+            if (commands.length === 0) {
+                showToast('Aucune commande valide trouvée', 'warning');
+                return;
+            }
+
+            // Vérifier les doublons et importer les nouvelles commandes
+            await importNewCommands(commands);
+        }
+
+        async function importNewCommands(commands) {
+            try {
+                if (!supabase) {
+                    console.log('Mode hors-ligne - Commandes à traiter:', commands);
+                    displayUnassignedCommands(commands);
+                    return;
+                }
+
+                // Récupérer toutes les références existantes
+                const { data: existingRefs } = await supabase
+                    .from('commandes_odoo')
+                    .select('reference');
+
+                const existingReferences = new Set(existingRefs ? existingRefs.map(c => c.reference) : []);
+
+                // Filtrer les nouvelles commandes
+                const newCommands = commands.filter(cmd => !existingReferences.has(cmd.reference));
+                const duplicateCommands = commands.filter(cmd => existingReferences.has(cmd.reference));
+
+                if (duplicateCommands.length > 0) {
+                    showToast(`${duplicateCommands.length} commande(s) déjà existante(s) ignorée(s)`, 'info');
+                }
+
+                if (newCommands.length === 0) {
+                    showToast('Aucune nouvelle commande à importer', 'info');
+                    return;
+                }
+
+                // Importer les nouvelles commandes avec project_id = null
+                const commandsToInsert = newCommands.map(cmd => ({
+                    reference: cmd.reference,
+                    date_commande: convertExcelDate(cmd.date_commande),
+                    client: cmd.client,
+                    vendeur: cmd.vendeur,
+                    activites: cmd.activites,
+                    total_ttc: cmd.total_ttc,
+                    etat_facture: cmd.etat_facture,
+                    project_id: null,
+                    created_at: new Date().toISOString()
+                }));
+
+                const { data: insertedCommands, error } = await supabase
+                    .from('commandes_odoo')
+                    .insert(commandsToInsert)
+                    .select();
+
+                if (error) {
+                    throw error;
+                }
+
+                showToast(`${insertedCommands.length} nouvelle(s) commande(s) importée(s)`, 'success');
+
+                // Recharger toutes les commandes non affectées
+                await loadUnassignedCommands();
+
+            } catch (error) {
+                console.error('Erreur import commandes:', error);
+                showToast('Erreur lors de l\'import: ' + error.message, 'danger');
+            }
+        }
+
+        function displayUnassignedCommands(commands) {
+    const container = document.getElementById('commandsList');
+    const unassignedSection = document.getElementById('unassignedCommands');
+    
+    if (!commands || commands.length === 0) {
+        container.innerHTML = `
+            <div class="p-4 text-center text-muted">
+                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                <h5>Aucune commande non affectée</h5>
+                <p>Toutes les commandes ont été affectées à des projets.</p>
+            </div>
+        `;
+        unassignedSection.style.display = 'block';
+        return;
+    }
+    
+    // Fonction pour formatter la date correctement
+    function formatDate(dateString) {
+        if (!dateString) return 'Date inconnue';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR');
+        } catch (error) {
+            return 'Date invalide';
+        }
+    }
+
+    // Affichage avec notice informative et barre de recherche
+    container.innerHTML = `
+        <div class="unassigned-commands-notice">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1"><i class="fas fa-info-circle me-2"></i>Commandes en attente d'affectation</h6>
+                    <p class="mb-0 text-muted">Ces commandes ont été importées en base mais ne sont pas encore affectées à un projet.</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-info fs-6">${commands.length} commande(s)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="mb-3 p-3 bg-light rounded">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchCommands" 
+                               placeholder="Rechercher par référence, client, vendeur..." 
+                               onkeyup="filterCommands()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        <span id="filteredCount">${commands.length}</span> / ${commands.length} commandes
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contrôles de sélection en masse -->
+        <div class="mb-3 p-3 bg-light rounded">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <input type="checkbox" id="selectAllCommands" class="form-check-input me-2" onchange="toggleAllCommands(this)">
+                    <label for="selectAllCommands" class="form-check-label fw-bold">Sélectionner tout</label>
+                    <span class="ms-2 text-muted" id="selectedCount">(0 sélectionnée(s))</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-danger btn-sm" id="massDeleteBtn" onclick="massDeleteCommands()" disabled>
+                        <i class="fas fa-trash me-1"></i>Supprimer de la base
+                    </button>
+                    <button class="btn btn-warning btn-sm" id="massCloseBtn" onclick="massCloseCommands()" disabled>
+                        <i class="fas fa-times me-1"></i>Clôturer en masse
+                    </button>
+                    <button class="btn btn-info btn-sm" id="massAssignBtn" onclick="massAssignCommands()" disabled>
+                        <i class="fas fa-link me-1"></i>Affecter en masse
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Liste des commandes -->
+        <div id="commandItems">
+            ${commands.map(cmd => `
+                <div class="command-item" data-command='${JSON.stringify(cmd)}'>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" class="form-check-input me-3 command-checkbox" 
+                                   value="${cmd.reference}" onchange="updateSelectedCount()">
+                            <div>
+                                <div class="command-ref">${cmd.reference}</div>
+                                <div class="command-client">${cmd.client}</div>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${formatDate(cmd.date_commande)}
+                                    <i class="fas fa-user ms-2 me-1"></i>${cmd.vendeur}
+                                    ${cmd.activites ? `<i class="fas fa-tasks ms-2 me-1"></i>${cmd.activites}` : ''}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                                <div class="command-amount">${cmd.total_ttc.toFixed(2)}€ TTC</div>
+                                <div class="btn-group-vertical mt-1">
+                                    <button class="btn btn-assign btn-sm" onclick="openProjectAssign('${cmd.reference}')">
+                                        <i class="fas fa-link me-1"></i>Affecter
+                                    </button>
+                                    <button class="btn btn-danger btn-sm mt-1" onclick="deleteIndividualCommand('${cmd.reference}')" 
+                                            title="Supprimer définitivement de la base">
+                                        <i class="fas fa-trash me-1"></i>Supprimer
+                                    </button>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    unassignedSection.style.display = 'block';
+}
+
+        async function validateAndPreview(data, type) {
+            if (data.length < 2) {
+                showToast('Fichier vide ou incorrect', 'warning');
+                return;
+            }
+
+            const headers = data[0];
+            const expectedHeaders = [
+                'Raison sociale', 'Numéro', 'Rue', 'CP', 'Ville', 
+                'SIRET', 'Nom contact', 'Tél contact', 'Email contact'
+            ];
+
+            // Validation des en-têtes
+            const headerErrors = validateHeaders(headers, expectedHeaders);
+            if (headerErrors.length > 0) {
+                showToast(`En-têtes incorrects: ${headerErrors.join(', ')}`, 'warning');
+            }
+
+            // Validation des données
+            const rows = data.slice(1);
+            const validatedData = [];
+            const errors = [];
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const validatedRow = await validateRow(row, type, i + 2); // +2 pour ligne Excel
+                validatedData.push(validatedRow);
+                
+                if (validatedRow.errors.length > 0) {
+                    errors.push(...validatedRow.errors);
+                }
+            }
+
+            displayPreview(validatedData, type, errors);
+        }
+
+        function validateHeaders(headers, expected) {
+            const errors = [];
+            expected.forEach((header, index) => {
+                if (!headers[index] || headers[index].toLowerCase().trim() !== header.toLowerCase()) {
+                    errors.push(`Colonne ${index + 1}: attendu "${header}"`);
+                }
+            });
+            return errors;
+        }
+
+        async function validateRow(row, type, lineNumber) {
+            const errors = [];
+            const data = {
+                raison_sociale: row[0]?.toString().trim(),
+                numero: row[1]?.toString().trim(),
+                rue: row[2]?.toString().trim(),
+                cp: row[3]?.toString().trim(),
+                ville: row[4]?.toString().trim(),
+                siret: row[5]?.toString().trim(),
+                nom_contact: row[6]?.toString().trim(),
+                tel_contact: row[7]?.toString().trim(),
+                email_contact: row[8]?.toString().trim(),
+                errors: [],
+                lineNumber: lineNumber
+            };
+
+            // Validations obligatoires
+            if (!data.raison_sociale) errors.push('Raison sociale obligatoire');
+            if (!data.nom_contact) errors.push('Nom contact obligatoire');
+
+            // Validation SIRET
+            if (data.siret && !validateSIRET(data.siret)) {
+                errors.push('SIRET invalide (14 chiffres requis)');
+            }
+
+            // Validation email
+            if (data.email_contact && !validateEmail(data.email_contact)) {
+                errors.push('Email invalide');
+            }
+
+            // Validation téléphone
+            if (data.tel_contact && !validatePhone(data.tel_contact)) {
+                errors.push('Téléphone invalide');
+            }
+
+            // Validation code postal
+            if (data.cp && !validatePostalCode(data.cp)) {
+                errors.push('Code postal invalide');
+            }
+
+            // Vérification des doublons SIRET
+            if (data.siret && supabase) {
+                const duplicate = await checkSIRETDuplicate(data.siret, type);
+                if (duplicate) {
+                    data.needsConfirmation = true;
+                    data.duplicateInfo = duplicate;
+                    errors.push(`SIRET déjà existant pour: ${duplicate.raison_sociale}`);
+                }
+            }
+
+            data.errors = errors;
+            return data;
+        }
+
+        function validateSIRET(siret) {
+            const cleanSiret = siret.replace(/\s/g, '');
+            return /^\d{14}$/.test(cleanSiret);
+        }
+
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function validatePhone(phone) {
+            const cleanPhone = phone.replace(/[\s\-\.]/g, '');
+            return /^0[1-9]\d{8}$/.test(cleanPhone);
+        }
+
+        function validatePostalCode(cp) {
+            return /^\d{5}$/.test(cp);
+        }
+
+        async function checkSIRETDuplicate(siret, type) {
+            try {
+                const table = type === 'clients' ? 'clients' : 'revendeurs';
+                const { data } = await supabase
+                    .from(table)
+                    .select('raison_sociale')
+                    .eq('siret', siret)
+                    .single();
+                return data;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function displayPreview(data, type, errors) {
+            const previewContainer = document.getElementById(`${type}Preview`);
+            const errorCount = data.filter(row => row.errors.length > 0).length;
+            const successCount = data.length - errorCount;
+
+            previewContainer.innerHTML = `
+                <div class="preview-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-table me-2"></i>Aperçu des données</h5>
+                        <div>
+                            <span class="badge bg-success me-2">${successCount} valides</span>
+                            <span class="badge bg-danger">${errorCount} erreurs</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-table">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Ligne</th>
+                                <th>Raison sociale</th>
+                                <th>SIRET</th>
+                                <th>Contact</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(row => `
+                                <tr class="${row.errors.length > 0 ? 'error-row' : ''}">
+                                    <td>${row.lineNumber}</td>
+                                    <td>
+                                        ${row.raison_sociale || '<em>Manquant</em>'}
+                                        ${row.needsConfirmation ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Confirmation SIRET requise"></i>' : ''}
+                                    </td>
+                                    <td class="${!validateSIRET(row.siret) ? 'error-cell' : ''}">
+                                        ${row.siret || '<em>Manquant</em>'}
+                                        ${!validateSIRET(row.siret) && row.siret ? '<i class="error-indicator fas fa-times"></i>' : ''}
+                                    </td>
+                                    <td>${row.nom_contact || '<em>Manquant</em>'}</td>
+                                    <td class="${row.email_contact && !validateEmail(row.email_contact) ? 'error-cell' : ''}">
+                                        ${row.email_contact || '<em>Manquant</em>'}
+                                        ${row.email_contact && !validateEmail(row.email_contact) ? '<i class="error-indicator fas fa-times"></i>' : ''}
+                                    </td>
+                                    <td class="${row.tel_contact && !validatePhone(row.tel_contact) ? 'error-cell' : ''}">
+                                        ${row.tel_contact || '<em>Manquant</em>'}
+                                        ${row.tel_contact && !validatePhone(row.tel_contact) ? '<i class="error-indicator fas fa-times"></i>' : ''}
+                                    </td>
+                                    <td>
+                                        ${row.errors.length > 0 ? 
+                                            `<span class="badge bg-danger" title="${row.errors.join(', ')}">Erreur</span>` : 
+                                            '<span class="badge bg-success">Valide</span>'
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ${errorCount > 0 ? `
+                    <div class="validation-summary warning">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erreurs détectées</h6>
+                        <p>Vous pouvez corriger les erreurs directement dans le tableau ou importer uniquement les lignes valides.</p>
+                        <div class="mt-3">
+                            <button class="btn btn-warning me-2" onclick="correctErrors('${type}')">
+                                <i class="fas fa-edit me-1"></i>Corriger les erreurs
+                            </button>
+                            <button class="btn btn-success" onclick="importValidData('${type}')">
+                                <i class="fas fa-check me-1"></i>Importer les lignes valides (${successCount})
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="validation-summary success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Toutes les données sont valides</h6>
+                        <p>${data.length} ligne(s) prête(s) à être importée(s).</p>
+                        <button class="btn btn-import" onclick="importData('${type}')">
+                            <i class="fas fa-upload me-2"></i>Importer les données
+                        </button>
+                    </div>
+                `}
+            `;
+
+            previewContainer.style.display = 'block';
+        }
+
+        async function openProjectAssign(commandRef) {
+            const commandData = Array.from(document.querySelectorAll('[data-command]'))
+                .find(el => JSON.parse(el.dataset.command).reference === commandRef);
+            
+            if (!commandData) return;
+
+            currentCommand = JSON.parse(commandData.dataset.command);
+            document.getElementById('modalCommandRef').textContent = commandRef;
+
+            // Charger la liste des projets existants
+            const projectSelect = document.getElementById('existingProjects');
+            projectSelect.innerHTML = '<option value="">-- Sélectionner un projet --</option>';
+            
+            projectsDatabase.forEach(project => {
+                projectSelect.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+            });
+
+            // Générer des suggestions IA
+            const suggestions = await generateProjectSuggestions(currentCommand);
+            if (suggestions.length > 0) {
+                displayProjectSuggestions(suggestions);
+            }
+
+            new bootstrap.Modal(document.getElementById('projectAssignModal')).show();
+        }
+
+        async function generateProjectSuggestions(command) {
+            if (!supabase) return [];
+
+            try {
+                // Chercher des projets avec le même client et montant similaire
+                const { data: existingProjects } = await supabase
+                    .from('projects')
+                    .select(`
+                        id, name, 
+                        project_details(prix_ttc_prevu),
+                        commandes_odoo(client, total_ttc)
+                    `)
+                    .not('id', 'is', null);
+
+                const suggestions = [];
+                const commandAmount = command.total_ttc;
+
+                for (const project of existingProjects || []) {
+                    // Vérifier si même client
+                    const hasMatchingClient = project.commandes_odoo.some(cmd => 
+                        cmd.client.toLowerCase().includes(command.client.toLowerCase()) ||
+                        command.client.toLowerCase().includes(cmd.client.toLowerCase())
+                    );
+
+                    if (hasMatchingClient) {
+                        // Calculer similarité de montant
+                        const projectTotal = project.commandes_odoo.reduce((sum, cmd) => sum + cmd.total_ttc, 0);
+                        const amountDiff = Math.abs(commandAmount - projectTotal) / commandAmount;
+                        
+                        if (amountDiff < 0.3) { // Différence < 30%
+                            suggestions.push({
+                                project: project,
+                                reason: `Même client, montant similaire (${projectTotal.toFixed(2)}€)`,
+                                confidence: Math.round((1 - amountDiff) * 100)
+                            });
+                        }
+                    }
+                }
+
+                return suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, 3);
+            } catch (error) {
+                console.error('Erreur suggestions:', error);
+                return [];
+            }
+        }
+
+        function displayProjectSuggestions(suggestions) {
+            const container = document.getElementById('suggestionsList');
+            const suggestionsSection = document.getElementById('projectSuggestions');
+
+            container.innerHTML = suggestions.map(suggestion => `
+                <div class="suggestion-item" onclick="selectSuggestedProject(${suggestion.project.id})">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${suggestion.project.name}</strong>
+                            <div class="text-muted small">${suggestion.reason}</div>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">${suggestion.confidence}% pertinent</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            suggestionsSection.style.display = 'block';
+        }
+
+        function selectSuggestedProject(projectId) {
+            document.getElementById('existingProjects').value = projectId;
+            document.querySelectorAll('.suggestion-item').forEach(item => {
+                item.style.background = 'rgba(52, 152, 219, 0.1)';
+            });
+            event.target.closest('.suggestion-item').style.background = 'rgba(40, 167, 69, 0.2)';
+        }
+
+        document.getElementById('confirmAssign').addEventListener('click', async function() {
+            const existingProjectId = document.getElementById('existingProjects').value;
+            const newProjectName = document.getElementById('newProjectName').value.trim();
+
+            if (!existingProjectId && !newProjectName) {
+                showToast('Veuillez sélectionner un projet ou créer un nouveau', 'warning');
+                return;
+            }
+
+            try {
+                let projectId = existingProjectId;
+
+                // Créer nouveau projet si nécessaire
+                if (!existingProjectId && newProjectName) {
+                    const { data: newProject, error } = await supabase
+                        .from('projects')
+                        .insert([{
+                            name: newProjectName,
+                            created_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    projectId = newProject.id;
+                }
+
+                // Affecter la commande au projet
+                await assignCommandToProject(currentCommand, projectId);
+
+                // Fermer la modal
+                bootstrap.Modal.getInstance(document.getElementById('projectAssignModal')).hide();
+
+                // Supprimer la commande de la liste et recharger
+                await loadUnassignedCommands();
+
+                showToast(`Commande ${currentCommand.reference} affectée avec succès`, 'success');
+
+            } catch (error) {
+                console.error('Erreur affectation:', error);
+                showToast('Erreur lors de l\'affectation: ' + error.message, 'danger');
+            }
+        });
+
+        async function assignCommandToProject(command, projectId) {
+            if (!supabase) {
+                console.log('Mode hors-ligne - Commande:', command, 'Projet:', projectId);
+                return;
+            }
+
+            // Mettre à jour la commande avec le project_id
+            const { error: updateError } = await supabase
+                .from('commandes_odoo')
+                .update({ project_id: projectId })
+                .eq('reference', command.reference);
+
+            if (updateError) throw updateError;
+
+            // Vérifier la conformité budgétaire
+            await checkBudgetConformity(projectId);
+        }
+
+        async function checkBudgetConformity(projectId) {
+            try {
+                // Récupérer le budget prévu du projet
+                const { data: projectDetails } = await supabase
+                    .from('project_details')
+                    .select('prix_ttc_prevu')
+                    .eq('project_id', projectId)
+                    .single();
+
+                // Calculer le total des commandes affectées
+                const { data: commands } = await supabase
+                    .from('commandes_odoo')
+                    .select('total_ttc')
+                    .eq('project_id', projectId);
+
+                if (projectDetails && commands) {
+                    const totalCommands = commands.reduce((sum, cmd) => sum + cmd.total_ttc, 0);
+                    const budgetPrevu = projectDetails.prix_ttc_prevu || 0;
+
+                    const conformityDiv = document.getElementById('conformityCheck');
+                    
+                    if (budgetPrevu > 0) {
+                        if (Math.abs(totalCommands - budgetPrevu) < 0.01) {
+                            conformityDiv.innerHTML = `
+                                <div class="conformity-ok">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>Conformité budgétaire OK</strong><br>
+                                    Budget prévu: ${budgetPrevu.toFixed(2)}€<br>
+                                    Total commandes: ${totalCommands.toFixed(2)}€
+                                </div>
+                            `;
+                        } else {
+                            conformityDiv.innerHTML = `
+                                <div class="conformity-alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Écart budgétaire détecté</strong><br>
+                                    Budget prévu: ${budgetPrevu.toFixed(2)}€<br>
+                                    Total commandes: ${totalCommands.toFixed(2)}€<br>
+                                    Écart: ${(totalCommands - budgetPrevu).toFixed(2)}€
+                                </div>
+                            `;
+                        }
+                        conformityDiv.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur vérification conformité:', error);
+            }
+        }
+
+        async function importData(type) {
+            const data = currentData[type];
+            if (!data) return;
+
+            const validData = data.filter(row => row.errors.length === 0);
+            const button = event.target;
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<div class="loading-spinner me-2"></div>Import en cours...';
+
+            try {
+                if (supabase) {
+                    const table = type === 'clients' ? 'clients' : 'revendeurs';
+                    const insertData = validData.map(row => ({
+                        raison_sociale: row.raison_sociale,
+                        numero: row.numero,
+                        rue: row.rue,
+                        cp: row.cp,
+                        ville: row.ville,
+                        siret: row.siret,
+                        nom_contact: row.nom_contact,
+                        tel_contact: row.tel_contact,
+                        email_contact: row.email_contact,
+                        created_at: new Date().toISOString()
+                    }));
+
+                    const { data: result, error } = await supabase
+                        .from(table)
+                        .insert(insertData)
+                        .select();
+
+                    if (error) {
+                        if (error.message.includes('does not exist')) {
+                            showCreateTableMessage(type);
+                            return;
+                        }
+                        throw error;
+                    }
+
+                    showToast(`${result.length} ${type} importé(s) avec succès !`, 'success');
+                } else {
+                    console.log(`Mode hors-ligne - Import ${type}:`, validData);
+                    showToast(`${validData.length} ${type} traité(s) (mode hors-ligne)`, 'info');
+                }
+
+                // Réinitialiser le formulaire
+                resetForm(type);
+
+            } catch (error) {
+                console.error('Erreur import:', error);
+                showToast('Erreur lors de l\'import: ' + error.message, 'danger');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        }
+
+        function showCreateTableMessage(type) {
+            const tableName = type === 'clients' ? 'clients' : 'revendeurs';
+            showToast(`
+                Table '${tableName}' manquante. Créez-la avec ce SQL :<br><br>
+                <code style="background: #f8f9fa; padding: 10px; border-radius: 5px; display: block;">
+                CREATE TABLE IF NOT EXISTS ${tableName} (<br>
+                &nbsp;&nbsp;id SERIAL PRIMARY KEY,<br>
+                &nbsp;&nbsp;raison_sociale VARCHAR(255) NOT NULL,<br>
+                &nbsp;&nbsp;numero VARCHAR(50),<br>
+                &nbsp;&nbsp;rue VARCHAR(255),<br>
+                &nbsp;&nbsp;cp VARCHAR(10),<br>
+                &nbsp;&nbsp;ville VARCHAR(100),<br>
+                &nbsp;&nbsp;siret VARCHAR(14),<br>
+                &nbsp;&nbsp;nom_contact VARCHAR(255),<br>
+                &nbsp;&nbsp;tel_contact VARCHAR(20),<br>
+                &nbsp;&nbsp;email_contact VARCHAR(255),<br>
+                &nbsp;&nbsp;created_at TIMESTAMP DEFAULT now(),<br>
+                &nbsp;&nbsp;updated_at TIMESTAMP DEFAULT now()<br>
+                );<br><br>
+                ALTER TABLE ${tableName} ENABLE ROW LEVEL SECURITY;<br>
+                CREATE POLICY "Allow all operations on ${tableName}" ON ${tableName} FOR ALL USING (true);
+                </code>
+            `, 'warning', 15000);
+        }
+
+        function resetForm(type) {
+            document.getElementById(`${type}File`).value = '';
+            document.getElementById(`${type}Preview`).style.display = 'none';
+            currentData[type] = null;
+            
+            const uploadZone = document.getElementById(`${type}Upload`);
+            uploadZone.className = 'upload-zone';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed`;
+            toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 350px; max-width: 500px;';
+            toast.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-2" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, duration);
+        }
+
+        // Fonctions additionnelles pour la correction d'erreurs
+        function correctErrors(type) {
+            showToast('Fonctionnalité de correction interactive en cours de développement', 'info');
+        }
+
+        function importValidData(type) {
+            importData(type);
+        }
+
+        // Reset des champs du modal lors de sa fermeture
+        document.getElementById('projectAssignModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('existingProjects').value = '';
+            document.getElementById('newProjectName').value = '';
+            document.getElementById('projectSuggestions').style.display = 'none';
+            document.getElementById('conformityCheck').style.display = 'none';
+        });
+
+        // ===============================
+        // FONCTIONS POUR TRAITEMENT EN MASSE
+        // ===============================
+
+        let selectedCommands = new Set();
+
+        function toggleAllCommands(checkbox) {
+    const commandCheckboxes = document.querySelectorAll('.command-checkbox');
+    commandCheckboxes.forEach(cb => {
+        // Vérifier si l'élément parent est visible (pas masqué par la recherche)
+        const commandItem = cb.closest('.command-item');
+        const isVisible = commandItem.style.display !== 'none';
+        
+        if (isVisible) {
+            cb.checked = checkbox.checked;
+            if (checkbox.checked) {
+                selectedCommands.add(cb.value);
+            } else {
+                selectedCommands.delete(cb.value);
+            }
+        }
+    });
+            updateSelectedCount();
+        }
+
+       function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.command-checkbox');
+    const visibleCheckboxes = Array.from(checkboxes).filter(cb => 
+        cb.closest('.command-item').style.display !== 'none'
+    );
+
+    selectedCommands.clear();
+    
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            selectedCommands.add(cb.value);
+        }
+    });
+
+    const count = selectedCommands.size;
+    document.getElementById('selectedCount').textContent = `(${count} sélectionnée(s))`;
+    
+    // Activer/désactiver les boutons en masse
+    const massCloseBtn = document.getElementById('massCloseBtn');
+    const massAssignBtn = document.getElementById('massAssignBtn');
+    
+    if (massCloseBtn) massCloseBtn.disabled = count === 0;
+    if (massAssignBtn) massAssignBtn.disabled = count === 0;
+    const massDeleteBtn = document.getElementById('massDeleteBtn');
+    if (massDeleteBtn) massDeleteBtn.disabled = count === 0;
+
+    // Mettre à jour le checkbox "tout sélectionner"
+    const selectAllCheckbox = document.getElementById('selectAllCommands');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = count === checkboxes.length && count > 0;
+        selectAllCheckbox.indeterminate = count > 0 && count < checkboxes.length;
+    }
+}
+
+        async function massCloseCommands() {
+            if (selectedCommands.size === 0) {
+                showToast('Aucune commande sélectionnée', 'warning');
+                return;
+            }
+
+            const confirmed = confirm(`Êtes-vous sûr de vouloir clôturer ${selectedCommands.size} commande(s) ?\n\nElles seront marquées comme traitées et supprimées de cette liste.`);
+            
+            if (!confirmed) return;
+
+            try {
+                const button = document.getElementById('massCloseBtn');
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<div class="loading-spinner me-2"></div>Clôture...';
+
+                if (supabase) {
+                    // Mettre à jour les commandes avec un statut spécial "CLÔTURÉ"
+                   const { error } = await supabase
+                        .from('commandes_odoo')
+                        .update({ 
+                            etat_facture: 'CLÔTURÉ',
+                    })
+                        .in('reference', Array.from(selectedCommands));
+
+                    if (error) throw error;
+                }
+
+                // Recharger les commandes non affectées
+                await loadUnassignedCommands();
+
+                selectedCommands.clear();
+                updateSelectedCount();
+                
+                showToast(`Commandes clôturées avec succès`, 'success');
+
+            } catch (error) {
+                console.error('Erreur clôture masse:', error);
+                showToast('Erreur lors de la clôture: ' + error.message, 'danger');
+            } finally {
+                const button = document.getElementById('massCloseBtn');
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-times me-1"></i>Clôturer en masse';
+            }
+        }
+
+        function massAssignCommands() {
+            if (selectedCommands.size === 0) {
+                showToast('Aucune commande sélectionnée', 'warning');
+                return;
+            }
+
+            // Préparer les données pour l'affectation en masse
+            const selectedCommandsData = Array.from(selectedCommands).map(ref => {
+                const commandElement = document.querySelector(`[data-command*='${ref}']`);
+                return JSON.parse(commandElement.dataset.command);
+            });
+
+            // Ouvrir une modal spéciale pour l'affectation en masse
+            openMassAssignModal(selectedCommandsData);
+        }
+
+        function openMassAssignModal(commandsData) {
+            // Créer et afficher une modal personnalisée pour l'affectation en masse
+            const modalHTML = `
+                <div class="modal fade" id="massAssignModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-link me-2"></i>
+                                    Affectation en masse (${commandsData.length} commandes)
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <h6>Commandes sélectionnées :</h6>
+                                    <div class="border rounded p-2 mb-3" style="max-height: 150px; overflow-y: auto;">
+                                        ${commandsData.map(cmd => `
+                                            <div class="d-flex justify-content-between align-items-center py-1">
+                                                <span><strong>${cmd.reference}</strong> - ${cmd.client}</span>
+                                                <span class="text-success">${cmd.total_ttc.toFixed(2)}€</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-calculator me-2"></i>
+                                        <strong>Total:</strong> ${commandsData.reduce((sum, cmd) => sum + cmd.total_ttc, 0).toFixed(2)}€ TTC
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Affecter à un projet existant :</label>
+                                    <select class="form-select" id="massExistingProjects">
+                                        <option value="">-- Sélectionner un projet --</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="text-center mb-3">
+                                    <strong>OU</strong>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Créer un nouveau projet :</label>
+                                    <input type="text" class="form-control" id="massNewProjectName" 
+                                           placeholder="Nom du nouveau projet pour ces commandes">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                <button type="button" class="btn btn-primary" onclick="confirmMassAssign()">
+                                    <i class="fas fa-link me-1"></i>Affecter les commandes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Supprimer une éventuelle modal existante
+            const existingModal = document.getElementById('massAssignModal');
+            if (existingModal) existingModal.remove();
+
+            // Ajouter la nouvelle modal au DOM
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            // Charger la liste des projets
+            const projectSelect = document.getElementById('massExistingProjects');
+            projectsDatabase.forEach(project => {
+                projectSelect.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+            });
+
+            // Afficher la modal
+            new bootstrap.Modal(document.getElementById('massAssignModal')).show();
+
+            // Stocker les données des commandes pour l'utilisation ultérieure
+            window.currentMassCommands = commandsData;
+        }
+
+        async function confirmMassAssign() {
+            const existingProjectId = document.getElementById('massExistingProjects').value;
+            const newProjectName = document.getElementById('massNewProjectName').value.trim();
+            const commands = window.currentMassCommands;
+
+            if (!existingProjectId && !newProjectName) {
+                showToast('Veuillez sélectionner un projet ou créer un nouveau', 'warning');
+                return;
+            }
+
+            if (!commands || commands.length === 0) {
+                showToast('Aucune commande à traiter', 'error');
+                return;
+            }
+
+            try {
+                let projectId = existingProjectId;
+
+                // Créer nouveau projet si nécessaire
+                if (!existingProjectId && newProjectName) {
+                    const { data: newProject, error } = await supabase
+                        .from('projects')
+                        .insert([{
+                            name: newProjectName,
+                            status: 'active',
+                            created_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    projectId = newProject.id;
+                }
+
+                // Affecter toutes les commandes au projet
+                for (const command of commands) {
+                    await assignCommandToProject(command, projectId);
+                }
+
+                // Fermer la modal
+                bootstrap.Modal.getInstance(document.getElementById('massAssignModal')).hide();
+
+                // Recharger les commandes non affectées
+                await loadUnassignedCommands();
+
+                // Réinitialiser la sélection
+                selectedCommands.clear();
+                updateSelectedCount();
+
+                showToast(`${commands.length} commandes affectées avec succès au projet`, 'success');
+
+            } catch (error) {
+                console.error('Erreur affectation masse:', error);
+                showToast('Erreur lors de l\'affectation: ' + error.message, 'danger');
+            }
+        }
+
+        // ===============================
+        // ÉVÉNEMENTS D'ONGLETS
+        // ===============================
+
+        // Charger les commandes non affectées quand on clique sur l'onglet projets
+        document.getElementById('projets-tab').addEventListener('click', function() {
+            setTimeout(() => {
+                if (allUnassignedCommands.length > 0) {
+                    displayUnassignedCommands(allUnassignedCommands);
+                }
+            }, 100);
+        });
+function filterCommands() {
+    const searchTerm = document.getElementById('searchCommands').value.toLowerCase().trim();
+    const commandItems = document.querySelectorAll('#commandItems .command-item');
+    let visibleCount = 0;
+    
+    // Si pas de terme de recherche, afficher tout
+    if (!searchTerm) {
+        commandItems.forEach(item => {
+            item.style.display = 'block';
+            visibleCount++;
+        });
+        document.getElementById('filteredCount').textContent = visibleCount;
+        return;
+    }
+    
+    commandItems.forEach(item => {
+        try {
+            const commandData = JSON.parse(item.dataset.command);
+            
+            // Vérifier chaque champ individuellement pour respecter l'ordre de frappe
+            const reference = (commandData.reference || '').toLowerCase();
+            const client = (commandData.client || '').toLowerCase();
+            const vendeur = (commandData.vendeur || '').toLowerCase();
+            const montant = (commandData.total_ttc || '').toString().toLowerCase();
+            const date = (commandData.date_commande || '').toLowerCase();
+            const activites = (commandData.activites || '').toLowerCase();
+            
+            // Recherche qui respecte l'ordre de frappe (commence par)
+            const matchesReference = reference.startsWith(searchTerm);
+            const matchesClient = client.startsWith(searchTerm);
+            const matchesVendeur = vendeur.startsWith(searchTerm);
+            const matchesMontant = montant.startsWith(searchTerm);
+            
+            // Recherche partielle pour certains champs (contient)
+            const containsInReference = reference.includes(searchTerm);
+            const containsInClient = client.includes(searchTerm);
+            const containsInVendeur = vendeur.includes(searchTerm);
+            const containsInActivites = activites.includes(searchTerm);
+            
+            // Priorité : commence par > contient
+            const isVisible = matchesReference || matchesClient || matchesVendeur || matchesMontant ||
+                            containsInReference || containsInClient || containsInVendeur || containsInActivites;
+            
+            if (isVisible) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Erreur parsing command data:', error);
+            item.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('filteredCount').textContent = visibleCount;
+}
+
+function clearSearch() {
+    document.getElementById('searchCommands').value = '';
+    filterCommands();
+}
+// Suppression en masse
+async function massDeleteCommands() {
+    if (selectedCommands.size === 0) {
+        showToast('Aucune commande sélectionnée', 'warning');
+        return;
+    }
+
+    const confirmed = confirm(`⚠️ ATTENTION : SUPPRESSION DÉFINITIVE ⚠️\n\nÊtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT ${selectedCommands.size} commande(s) de la base de données ?\n\nCette action est IRRÉVERSIBLE !\n\nCommandes concernées :\n${Array.from(selectedCommands).join(', ')}`);
+    
+    if (!confirmed) return;
+
+    const doubleConfirm = confirm(`Dernière confirmation :\n\nSupprimer définitivement ${selectedCommands.size} enregistrement(s) ?\n\nCette action ne peut PAS être annulée.`);
+    
+    if (!doubleConfirm) return;
+
+    try {
+        const button = document.getElementById('massDeleteBtn');
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<div class="loading-spinner me-2"></div>Suppression...';
+
+        if (supabase) {
+            const { error } = await supabase
+                .from('commandes_odoo')
+                .delete()
+                .in('reference', Array.from(selectedCommands));
+
+            if (error) throw error;
+
+            showToast(`${selectedCommands.size} commande(s) supprimée(s) définitivement de la base`, 'success');
+        }
+
+        await loadUnassignedCommands();
+        selectedCommands.clear();
+        updateSelectedCount();
+
+    } catch (error) {
+        console.error('Erreur suppression masse:', error);
+        showToast('Erreur lors de la suppression: ' + error.message, 'danger');
+    } finally {
+        const button = document.getElementById('massDeleteBtn');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-trash me-1"></i>Supprimer de la base';
+        }
+    }
+}
+
+// Suppression individuelle
+async function deleteIndividualCommand(reference) {
+    const confirmed = confirm(`⚠️ SUPPRESSION DÉFINITIVE ⚠️\n\nÊtes-vous sûr de vouloir supprimer définitivement la commande ${reference} de la base de données ?\n\nCette action est IRRÉVERSIBLE !`);
+    
+    if (!confirmed) return;
+
+    try {
+        if (supabase) {
+            const { error } = await supabase
+                .from('commandes_odoo')
+                .delete()
+                .eq('reference', reference);
+
+            if (error) throw error;
+
+            showToast(`Commande ${reference} supprimée définitivement`, 'success');
+        }
+
+        await loadUnassignedCommands();
+
+    } catch (error) {
+        console.error('Erreur suppression individuelle:', error);
+        showToast('Erreur lors de la suppression: ' + error.message, 'danger');
+    }
+}
+    </script>
+</body>
+</html>

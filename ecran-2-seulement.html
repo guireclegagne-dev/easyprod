@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation; user-select: none;
+    }
+    .screen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; color:white; }
+    .back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 12px 18px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    color: white;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    }
+.back-btn:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-1px);
+}
+    h1 { font-size:2.2em; margin-bottom:30px; font-weight:300; text-align:center; }
+    .list { width:100%; max-width:480px; max-height:70vh; overflow:auto; }
+    .btn-tile {
+      width:100%; padding:20px; margin:10px 0;
+      background: rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3); border-radius:15px; color:white;
+      font-size:1.15em; font-weight:500; text-align:center; cursor:pointer; backdrop-filter:blur(10px);
+      transition: all .2s ease;
+    }
+    .btn-tile:hover, .btn-tile.selected { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.6); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .card { width:min(640px,95vw); padding:22px; border-radius:16px; background: rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.25); backdrop-filter: blur(10px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
+    .row { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:1.05em; }
+    .row i { width:24px; text-align:center; opacity:.95; }
+    .controls { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; }
+    .btn-white { background:#fff; color:#1f2937; }
+    .btn-outline { background:transparent; color:white; border:2px solid rgba(255,255,255,.5); }
+    .timer .time { font-size:3rem; font-weight:700; line-height:1.2; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+    .timer .since { opacity:.9; margin-top:6px; font-size:.95em; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:10px; }
+    .grid .label { opacity:.95; }
+    .qty-box { display:flex; align-items:center; gap:10px; margin-top:8px; }
+    .qty-input { width:100%; padding:16px; font-size:1.6em; text-align:center; border:3px solid rgba(255,255,255,.3); border-radius:14px; background:rgba(255,255,255,.1); color:white; outline:none; }
+    .qty-btn { padding:12px 16px; font-size:1.2em; font-weight:700; border-radius:12px; border:2px solid rgba(255,255,255,.4); background:rgba(255,255,255,.15); color:white; cursor:pointer; }
+    .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
+    .hidden { display:none !important; }
+    @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } .timer .time { font-size:2.4rem; } }
+  </style>
+  <script src="config.js"></script>
+  <script>
+  const SUPABASE_URL = CONFIG.SUPABASE.URL;
+  const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+    const LS = {
+      op: 'prod_selected_operator',
+      pr: 'prod_selected_project',
+      opn: 'prod_selected_operation',
+      start: 'prod_started_at',
+      end: 'prod_ended_at',
+      exec: 'prod_execution_ms',
+      pause: 'prod_pause_ms'
+    };
+    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+    function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
+    function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
+  </script>
+
+<title>Sélection projet — Écran 2</title>
+</head>
+<body>
+  <section class="screen" style="background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+    <button class="back-btn" onclick="window.location.href='ecran-1-seulement.html'">
+    <i class="fas fa-arrow-left"></i>
+      Précédent
+  </button>
+    <h1><i class="fas fa-project-diagram me-3"></i>Sélectionner un projet</h1>
+    <div class="statusbar" id="recap"></div>
+    <div class="list" id="projectsList">
+      <div class="statusbar"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+    </div>
+  </section>
+
+<script>
+let supabase = null;
+const fallback = [
+  {id: 1, name: 'Rénovation mobilier bureau', status:'en_cours'},
+  {id: 2, name: 'Maintenance préventive', status:'en_cours'},
+  {id: 3, name: 'Projet recyclage plastique', status:'terminé'},
+  {id: 4, name: 'Formation nouveaux opérateurs', status:'en_cours'},
+  {id: 5, name: 'Audit qualité', status:'en_cours'}
+];
+
+document.addEventListener('DOMContentLoaded', init);
+async function init(){
+  const op = getLS(LS.op); if(!op) return location.href='ecran-1-seulement.html';
+  document.getElementById('recap').textContent = 'Opérateur: ' + op.name;
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  try {
+    const { data, error } = await supabase.from('projects').select('id, name, status').eq('status', 'active').order('name');
+    if (error) throw error;
+    let items = (data||[]).map(p => ({id:p.id, name:p.name}));
+    if (!items.length) items = fallback.filter(p=>p.status==='en_cours').map(p=>({id:p.id, name:p.name}));
+    render(items);
+  } catch(e) {
+    const items = fallback.filter(p=>p.status==='en_cours').map(p=>({id:p.id, name:p.name}));
+    render(items);
+  }
+}
+
+function render(items){
+  document.getElementById('projectsList').innerHTML = items.map(p => `
+    <button class="btn-tile" data-id="${p.id}" data-name="${p.name}">
+      <i class="fas fa-folder me-3"></i>${p.name}
+    </button>
+  `).join('');
+  document.querySelectorAll('.btn-tile').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const info = { id: Number(btn.dataset.id), name: btn.dataset.name };
+      setLS(LS.pr, info);
+      window.location.href = 'ecran-3-seulement.html';
+    });
+  });
+}
+</script>
+</body>
+</html>

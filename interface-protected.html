@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface de Production</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Authentification OBLIGATOIRE -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="auth-middleware.js"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 80px);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .screen h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            color: #333;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .row {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+        }
+        
+        .row i {
+            font-size: 1.2rem;
+            margin-right: 1rem;
+            color: #11998e;
+            width: 20px;
+        }
+        
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+            border: 1px solid rgba(108, 117, 125, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .user-info {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .statusbar {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .screen {
+                padding: 1rem;
+            }
+            .screen h1 {
+                font-size: 2rem;
+            }
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <div class="navbar-brand">
+                <i class="fas fa-cogs me-2 text-primary"></i>
+                <strong>Système de Production</strong>
+            </div>
+            
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <small class="text-muted">Connecté en tant que:</small><br>
+                    <strong class="user-name">Chargement...</strong>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary btn-sm admin-only" onclick="goToUserManagement()" title="Gestion des utilisateurs">
+                        <i class="fas fa-users"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="logout()" title="Déconnexion">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Écran principal -->
+    <section class="screen">
+        <h1><i class="fas fa-play-circle me-3"></i>Interface de Production</h1>
+        
+        <div class="card">
+            <div class="user-info text-center">
+                <h5 class="mb-1">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <span class="user-name">Utilisateur</span>
+                </h5>
+                <small class="text-muted user-email">email@example.com</small>
+            </div>
+            
+            <div class="row">
+                <i class="fas fa-clock"></i>
+                <span>Dernière activité: <span id="lastActivity">-</span></span>
+            </div>
+            
+            <div class="row">
+                <i class="fas fa-calendar"></i>
+                <span>Session démarrée: <span id="sessionStart">-</span></span>
+            </div>
+            
+            <div class="row">
+                <i class="fas fa-shield-alt"></i>
+                <span>Niveau d'accès: <span id="userRole">Utilisateur</span></span>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="goToProductionFlow()">
+                    <i class="fas fa-play me-2"></i>
+                    Démarrer Production
+                </button>
+                
+                <button class="btn btn-secondary admin-only" onclick="goToReports()">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Rapports
+                </button>
+            </div>
+            
+            <div class="statusbar" id="systemStatus">
+                <i class="fas fa-circle text-success me-1"></i>
+                Système opérationnel
+            </div>
+        </div>
+        
+        <!-- Quick Actions (Admin only) -->
+        <div class="mt-4 admin-only" id="quickActions" style="display: none;">
+            <div class="card" style="max-width: 300px;">
+                <h6 class="text-center mb-3">
+                    <i class="fas fa-tools me-2"></i>
+                    Actions Rapides
+                </h6>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="viewActiveUsers()">
+                        <i class="fas fa-users me-2"></i>
+                        Utilisateurs Actifs
+                    </button>
+                    
+                    <button class="btn btn-outline-success btn-sm" onclick="exportData()">
+                        <i class="fas fa-download me-2"></i>
+                        Exporter Données
+                    </button>
+                    
+                    <button class="btn btn-outline-warning btn-sm" onclick="systemMaintenance()">
+                        <i class="fas fa-wrench me-2"></i>
+                        Maintenance
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Toast notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <script>
+        // Variables globales
+        let currentUser = null;
+        let sessionStartTime = null;
+        
+        // Initialisation après authentification
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Attendre que l'authentification soit prête
+            await waitForAuth();
+            
+            // Initialiser l'interface
+            initializeInterface();
+            
+            // Démarrer les mises à jour périodiques
+            startPeriodicUpdates();
+        });
+        
+        // Attendre l'authentification
+        async function waitForAuth() {
+            return new Promise((resolve) => {
+                const checkAuth = () => {
+                    if (window.authManager && window.authManager.isAuthenticated()) {
+                        currentUser = window.authManager.getCurrentUser();
+                        resolve();
+                    } else {
+                        setTimeout(checkAuth, 100);
+                    }
+                };
+                checkAuth();
+            });
+        }
+        
+        // Initialiser l'interface
+        function initializeInterface() {
+            if (!currentUser) return;
+            
+            // Mettre à jour les informations utilisateur
+            updateUserInterface();
+            
+            // Configurer l'heure de début de session
+            sessionStartTime = Date.now();
+            updateSessionInfo();
+            
+            // Afficher/masquer les éléments admin
+            toggleAdminElements();
+            
+            // Charger les préférences utilisateur
+            loadUserPreferences();
+            
+            showToast(`Bonjour ${getUserDisplayName(currentUser)} !`, 'success');
+        }
+        
+        // Mettre à jour l'interface utilisateur
+        function updateUserInterface() {
+            const displayName = getUserDisplayName(currentUser);
+            
+            document.querySelectorAll('.user-name').forEach(el => {
+                el.textContent = displayName;
+            });
+            
+            document.querySelectorAll('.user-email').forEach(el => {
+                el.textContent = currentUser.email;
+            });
+            
+            document.getElementById('userRole').textContent = 
+                currentUser.is_admin ? 'Administrateur' : 'Utilisateur';
+        }
+        
+        // Afficher/masquer les éléments admin
+        function toggleAdminElements() {
+            const adminElements = document.querySelectorAll('.admin-only');
+            const isAdmin = currentUser && currentUser.is_admin;
+            
+            adminElements.forEach(el => {
+                el.style.display = isAdmin ? 'block' : 'none';
+            });
+            
+            if (isAdmin) {
+                document.getElementById('quickActions').style.display = 'block';
+            }
+        }
+        
+        // Mettre à jour les informations de session
+        function updateSessionInfo() {
+            const now = new Date();
+            const sessionDuration = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
+            
+            document.getElementById('lastActivity').textContent = now.toLocaleTimeString('fr-FR');
+            document.getElementById('sessionStart').textContent = 
+                sessionStartTime ? new Date(sessionStartTime).toLocaleTimeString('fr-FR') : 'Inconnue';
+        }
+        
+        // Charger les préférences utilisateur
+        function loadUserPreferences() {
+            const savedPreferences = localStorage.getItem(`user_prefs_${currentUser.id}`);
+            if (savedPreferences) {
+                const prefs = JSON.parse(savedPreferences);
+                // Appliquer les préférences (thème, langue, etc.)
+                applyUserPreferences(prefs);
+            }
+        }
+        
+        // Appliquer les préférences utilisateur
+        function applyUserPreferences(prefs) {
+            // Exemple: thème sombre
+            if (prefs.darkMode) {
+                document.body.classList.add('dark-theme');
+            }
+        }
+        
+        // Démarrer les mises à jour périodiques
+        function startPeriodicUpdates() {
+            // Mettre à jour l'activité toutes les 30 secondes
+            setInterval(updateSessionInfo, 30000);
+            
+            // Vérifier le statut système toutes les minutes
+            setInterval(checkSystemStatus, 60000);
+        }
+        
+        // Vérifier le statut du système
+        async function checkSystemStatus() {
+            try {
+                // Ping vers Supabase pour vérifier la connexion
+                const supabase = window.supabase.createClient(
+                    'https://pekndazxlkxdhfgrdtyq.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBla25kYXp4bGt4ZGhmZ3JkdHlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODIzMzcsImV4cCI6MjA3MjQ1ODMzN30.McX9eQpaQ3SJfSTErz1dP0ixJl8tyK__aqyFrStnLvo'
+                );
+                
+                const { error } = await supabase
+                    .from('users')
+                    .select('count', { count: 'exact', head: true });
+                
+                const statusEl = document.getElementById('systemStatus');
+                if (!error) {
+                    statusEl.innerHTML = '<i class="fas fa-circle text-success me-1"></i>Système opérationnel';
+                } else {
+                    statusEl.innerHTML = '<i class="fas fa-circle text-warning me-1"></i>Connexion limitée';
+                }
+                
+            } catch (error) {
+                document.getElementById('systemStatus').innerHTML = 
+                    '<i class="fas fa-circle text-danger me-1"></i>Problème de connexion';
+            }
+        }
+        
+        // Navigation
+        function goToProductionFlow() {
+            // Sauvegarder l'utilisateur actuel pour les écrans de production
+            localStorage.setItem('current_user', JSON.stringify(currentUser));
+            window.location.href = 'ecran-1-seulement.html';
+        }
+        
+        function goToUserManagement() {
+            if (currentUser && currentUser.is_admin) {
+                window.location.href = 'user-management.html';
+            } else {
+                showToast('Accès refusé - Droits administrateur requis', 'danger');
+            }
+        }
+        
+        function goToReports() {
+            if (currentUser && currentUser.is_admin) {
+                showToast('Module de rapports en développement', 'info');
+                // window.location.href = 'reports.html';
+            } else {
+                showToast('Accès refusé - Droits administrateur requis', 'danger');
+            }
+        }
+        
+        // Actions rapides admin
+        async function viewActiveUsers() {
+            if (!currentUser || !currentUser.is_admin) return;
+            
+            try {
+                const supabase = window.supabase.createClient(
+                    'https://pekndazxlkxdhfgrdtyq.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBla25kYXp4bGt4ZGhmZ3JkdHlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODIzMzcsImV4cCI6MjA3MjQ1ODMzN30.McX9eQpaQ3SJfSTErz1dP0ixJl8tyK__aqyFrStnLvo'
+                );
+                
+                // Compter les sessions actives des dernières 24h
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                const { data, error } = await supabase
+                    .from('user_sessions')
+                    .select(`
+                        id,
+                        created_at,
+                        users (
+                            first_name,
+                            last_name,
+                            email
+                        )
+                    `)
+                    .gte('created_at', yesterday.toISOString())
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const activeCount = data ? data.length : 0;
+                showToast(`${activeCount} session(s) active(s) dans les dernières 24h`, 'info');
+                
+            } catch (error) {
+                showToast('Erreur lors de la récupération des données', 'danger');
+            }
+        }
+        
+        function exportData() {
+            if (!currentUser || !currentUser.is_admin) return;
+            
+            showToast('Export de données en développement', 'info');
+            // Ici, vous pourriez implémenter l'export des données de production
+        }
+        
+        function systemMaintenance() {
+            if (!currentUser || !currentUser.is_admin) return;
+            
+            if (confirm('Activer le mode maintenance ?\n\nCela limitera l\'accès au système.')) {
+                showToast('Mode maintenance activé', 'warning');
+                // Ici, vous pourriez implémenter la logique de maintenance
+            }
+        }
+        
+        // Fonctions utilitaires
+        function getUserDisplayName(user) {
+            if (user.first_name && user.last_name) {
+                return `${user.first_name} ${user.last_name}`;
+            } else if (user.name) {
+                return user.name;
+            }
+            return user.email;
+        }
+        
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast align-items-center text-bg-${type} border-0`;
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Nettoyer après fermeture
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+        }
+        
+        // Gestion des raccourcis clavier
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + Shift + A = Admin panel
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                if (currentUser && currentUser.is_admin) {
+                    goToUserManagement();
+                }
+            }
+            
+            // Ctrl + Shift + P = Production
+            if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+                goToProductionFlow();
+            }
+            
+            // Ctrl + Shift + L = Logout
+            if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+                logout();
+            }
+        });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

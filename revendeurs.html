@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyProd by Luceleanne - Gestion Revendeurs</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --manager-color: #8e44ad;
+            --reseller-color: #16a085;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin-top: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 80vh;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--reseller-color), #138d75);
+            color: white;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            transform: translate(-50px, 50px);
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .stats-row {
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--reseller-color);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, var(--reseller-color), #138d75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            overflow: hidden;
+        }
+
+        .card-header-custom {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+            padding: 20px 25px;
+        }
+
+        .btn-back {
+            background: linear-gradient(135deg, var(--secondary-color), #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .btn-back:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, var(--reseller-color), #138d75);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-add:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(22, 160, 133, 0.3);
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .table-modern {
+            margin-bottom: 0;
+            border: none;
+        }
+
+        .table-modern thead {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .table-modern thead th {
+            border: none;
+            padding: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .table-modern tbody td {
+            padding: 15px;
+            border-top: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: rgba(22, 160, 133, 0.05);
+        }
+
+        .reseller-row {
+            cursor: pointer;
+        }
+
+        .reseller-name {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .reseller-contact {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .badge-category {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-standard {
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+        }
+
+        .badge-premium {
+            background: rgba(22, 160, 133, 0.1);
+            color: var(--reseller-color);
+        }
+
+        .badge-gold {
+            background: rgba(241, 196, 15, 0.1);
+            color: #f1c40f;
+        }
+
+        .badge-active {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+
+        .badge-inactive {
+            background: rgba(149, 165, 166, 0.1);
+            color: #95a5a6;
+        }
+
+        .action-btn {
+            border: none;
+            background: none;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            margin: 0 2px;
+        }
+
+        .action-btn:hover {
+            background: rgba(0,0,0,0.1);
+            transform: scale(1.1);
+        }
+
+        .action-btn.edit {
+            color: var(--info-color);
+        }
+
+        .action-btn.delete {
+            color: var(--danger-color);
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--reseller-color), #138d75);
+            color: white;
+            border-radius: 15px 15px 0 0;
+            border-bottom: none;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            padding: 12px 15px;
+        }
+
+        .form-control:focus {
+            border-color: var(--reseller-color);
+            box-shadow: 0 0 0 0.2rem rgba(22, 160, 133, 0.25);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--reseller-color);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .connection-status.connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            padding-left: 45px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        .filter-select {
+            min-width: 150px;
+        }
+
+        .discount-info {
+            font-size: 0.9rem;
+            color: var(--reseller-color);
+            font-weight: 600;
+        }
+
+        .credit-info {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status connecting" id="connectionStatus">
+        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-store me-2"></i>
+                EasyProd by Luceleanne - Revendeurs
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a href="console-admin-standalone.html" class="btn btn-outline-light me-3">
+                        <i class="fas fa-arrow-left me-2"></i>Retour Console
+                    </a>
+                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user-shield me-1"></i>
+                    Administrateur
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="main-container mx-3">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2">
+                            <i class="fas fa-store me-3"></i>Gestion des Revendeurs
+                        </h1>
+                        <p class="mb-0 opacity-75">
+                            Administration et suivi de votre réseau de distribution
+                        </p>
+                    </div>
+                    <div>
+                        <a href="console-admin-standalone.html" class="btn-back me-3">
+                            <i class="fas fa-arrow-left me-2"></i>Retour Console
+                        </a>
+                        <button class="btn-add" onclick="showAddResellerModal()">
+                            <i class="fas fa-plus me-2"></i>Nouveau Revendeur
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="content-area">
+                <!-- Stats Row -->
+                <div class="row stats-row">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <div class="stat-value" id="totalResellers">-</div>
+                            <div class="stat-label">Total Revendeurs</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-value" id="activeResellers">-</div>
+                            <div class="stat-label">Revendeurs Actifs</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="stat-value" id="goldResellers">-</div>
+                            <div class="stat-label">Partenaires Gold</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-euro-sign"></i>
+                            </div>
+                            <div class="stat-value" id="totalRevenue">-</div>
+                            <div class="stat-label">CA Total (k€)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Table -->
+                <div class="main-card">
+                    <div class="card-header-custom">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list me-2"></i>Liste des Revendeurs
+                            </h5>
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
+                                <div class="search-box">
+                                    <input type="text" class="form-control" id="searchInput" 
+                                           placeholder="Rechercher un revendeur...">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <select class="form-select filter-select" id="categoryFilter" onchange="filterResellers()">
+                                    <option value="">Toutes les catégories</option>
+                                    <option value="standard">Standard</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="gold">Gold</option>
+                                </select>
+                                <select class="form-select filter-select" id="statusFilter" onchange="filterResellers()">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="true">Actifs</option>
+                                    <option value="false">Inactifs</option>
+                                </select>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshResellers()">
+                                    <i class="fas fa-sync me-1"></i>Actualiser
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-modern table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Entreprise</th>
+                                    <th>Contact</th>
+                                    <th>Catégorie</th>
+                                    <th>Région</th>
+                                    <th>Remise</th>
+                                    <th>Crédit</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resellersTable">
+                                <tr>
+                                    <td colspan="8" class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i>Chargement des revendeurs...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout/Modification Revendeur -->
+    <div class="modal fade" id="resellerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="fas fa-plus me-2"></i>Nouveau Revendeur
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="resellerForm">
+                        <input type="hidden" id="resellerId">
+                        
+                        <!-- Informations de base -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom de l'entreprise *</label>
+                                    <input type="text" class="form-control" id="companyName" required maxlength="200">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom commercial</label>
+                                    <input type="text" class="form-control" id="commercialName" maxlength="200">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Personne de contact *</label>
+                                    <input type="text" class="form-control" id="contactPerson" required maxlength="100">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" maxlength="100">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Téléphone</label>
+                                    <input type="tel" class="form-control" id="phone" maxlength="20">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Région</label>
+                                    <input type="text" class="form-control" id="region" maxlength="100" 
+                                           placeholder="ex: Île-de-France, Auvergne-Rhône-Alpes...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Adresses -->
+                        <div class="mb-3">
+                            <label class="form-label">Adresse du siège social</label>
+                            <textarea class="form-control" id="hqAddress" rows="2" maxlength="300"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Adresse de livraison</label>
+                            <textarea class="form-control" id="deliveryAddress" rows="2" maxlength="300"></textarea>
+                            <div class="form-text">
+                                <input type="checkbox" id="sameAsHq" onchange="copyHqAddress()">
+                                <label for="sameAsHq" class="ms-1">Identique au siège social</label>
+                            </div>
+                        </div>
+
+                        <!-- Informations commerciales -->
+                        <hr class="my-4">
+                        <h6 class="text-muted mb-3">Informations Commerciales</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Catégorie</label>
+                                    <select class="form-control" id="category">
+                                        <option value="standard">Standard</option>
+                                        <option value="premium">Premium</option>
+                                        <option value="gold">Gold</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Taux de remise (%)</label>
+                                    <input type="number" class="form-control" id="discountRate" 
+                                           min="0" max="50" step="0.01" value="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Limite de crédit (€)</label>
+                                    <input type="number" class="form-control" id="creditLimit" 
+                                           min="0" step="100" value="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">SIRET</label>
+                                    <input type="text" class="form-control" id="siret" maxlength="14"
+                                           placeholder="12345678901234">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">N° TVA Intracommunautaire</label>
+                                    <input type="text" class="form-control" id="tvaNumber" maxlength="20"
+                                           placeholder="FR12345678901">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Délai de paiement (jours)</label>
+                                    <input type="number" class="form-control" id="paymentTerms" 
+                                           min="0" max="120" value="30">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Statut</label>
+                                    <select class="form-control" id="isActive">
+                                        <option value="true">Actif</option>
+                                        <option value="false">Inactif</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" rows="3" maxlength="500"
+                                      placeholder="Notes internes, commentaires particuliers..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Annuler
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveReseller()">
+                        <i class="fas fa-save me-1"></i>Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+    <script>
+        // Configuration Supabase
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+        // Variables globales
+        let resellers = [];
+        let filteredResellers = [];
+        let supabaseLoaded = false;
+        let supabase = null;
+        let currentEditingId = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initialisation de la gestion des revendeurs...');
+            initApp();
+            setupSearchFilter();
+        });
+
+        async function initApp() {
+            updateConnectionStatus('connecting', 'Connexion...');
+            await loadSupabase();
+        }
+
+        async function loadSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseLoaded = true;
+                updateConnectionStatus('connected', 'Connecté');
+                
+                await loadResellersFromDB();
+            } catch (error) {
+                console.error('Erreur Supabase:', error);
+                updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                loadSampleResellers();
+            }
+        }
+
+        async function loadResellersFromDB() {
+            if (!supabaseLoaded) return;
+            
+            try {
+                console.log('Chargement des revendeurs depuis la base...');
+                
+                const { data, error } = await supabase
+                    .from('revendeurs')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    if (error.message.includes('relation "revendeurs" does not exist')) {
+                        console.log('Table revendeurs n\'existe pas');
+                        showTableMissingMessage();
+                        return;
+                    }
+                    throw error;
+                }
+                
+                resellers = data || [];
+                filteredResellers = resellers;
+                console.log(`${resellers.length} revendeurs chargés`);
+                
+                updateStats();
+                updateResellersTable();
+                
+            } catch (error) {
+                console.error('Erreur chargement revendeurs:', error);
+                loadSampleResellers();
+            }
+        }
+
+        function showTableMissingMessage() {
+            const tbody = document.getElementById('resellersTable');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-warning">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>
+                        <strong>Table "revendeurs" non trouvée</strong><br>
+                        Utilisez la console admin (Debug DB) pour créer la table des revendeurs avec le script SQL fourni.
+                        <br><br>
+                        <a href="console-admin-standalone.html" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-1"></i>Aller à la Console Admin
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function loadSampleResellers() {
+            console.log('Chargement des données d\'exemple...');
+            resellers = [
+                {
+                    id: 1,
+                    company_name: 'Mobilier Pro Solutions',
+                    contact_person: 'Jean Dupont',
+                    email: 'j.dupont@mobilierpro.fr',
+                    phone: '01 23 45 67 89',
+                    hq_address: '15 Avenue des Champs, 75008 Paris',
+                    category: 'premium',
+                    region: 'Île-de-France',
+                    discount_rate: 15.00,
+                    credit_limit: 50000.00,
+                    is_active: true,
+                    total_orders: 25,
+                    total_amount: 125000.00,
+                    created_at: '2024-01-15T10:30:00Z'
+                },
+                {
+                    id: 2,
+                    company_name: 'Bureau & Co',
+                    contact_person: 'Marie Martin',
+                    email: 'm.martin@bureaueco.fr',
+                    phone: '04 56 78 90 12',
+                    hq_address: '42 Rue de la République, 69002 Lyon',
+                    category: 'standard',
+                    region: 'Auvergne-Rhône-Alpes',
+                    discount_rate: 10.00,
+                    credit_limit: 25000.00,
+                    is_active: true,
+                    total_orders: 12,
+                    total_amount: 65000.00,
+                    created_at: '2024-02-10T14:20:00Z'
+                },
+                {
+                    id: 3,
+                    company_name: 'EcoDesk Distribution',
+                    contact_person: 'Pierre Leroy',
+                    email: 'p.leroy@ecodesk.fr',
+                    phone: '02 34 56 78 90',
+                    hq_address: '8 Place du Commerce, 44000 Nantes',
+                    category: 'gold',
+                    region: 'Pays de la Loire',
+                    discount_rate: 20.00,
+                    credit_limit: 75000.00,
+                    is_active: true,
+                    total_orders: 45,
+                    total_amount: 285000.00,
+                    created_at: '2024-01-05T09:15:00Z'
+                },
+                {
+                    id: 4,
+                    company_name: 'Office Green',
+                    contact_person: 'Sophie Dubois',
+                    email: 's.dubois@officegreen.fr',
+                    phone: '05 67 89 01 23',
+                    hq_address: '25 Cours Mirabeau, 13100 Aix-en-Provence',
+                    category: 'standard',
+                    region: 'Provence-Alpes-Côte d\'Azur',
+                    discount_rate: 8.00,
+                    credit_limit: 15000.00,
+                    is_active: false,
+                    total_orders: 3,
+                    total_amount: 8500.00,
+                    created_at: '2024-03-20T16:45:00Z'
+                }
+            ];
+            
+            filteredResellers = resellers;
+            updateStats();
+            updateResellersTable();
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-1"></i> ${message}`;
+        }
+
+        function updateStats() {
+            const activeResellers = resellers.filter(r => r.is_active).length;
+            const goldResellers = resellers.filter(r => r.category === 'gold').length;
+            const totalRevenue = resellers.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+
+            document.getElementById('totalResellers').textContent = resellers.length;
+            document.getElementById('activeResellers').textContent = activeResellers;
+            document.getElementById('goldResellers').textContent = goldResellers;
+            document.getElementById('totalRevenue').textContent = Math.round(totalRevenue / 1000);
+        }
+
+        function updateResellersTable(dataToShow = null) {
+            const tbody = document.getElementById('resellersTable');
+            const resellersToShow = dataToShow || filteredResellers;
+            
+            if (resellersToShow.length === 0) {
+                if (dataToShow !== null) {
+                    // Résultat de recherche/filtre vide
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">
+                                <i class="fas fa-search fa-2x mb-3"></i><br>
+                                Aucun revendeur trouvé pour vos critères de recherche
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Aucun revendeur du tout
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <i class="fas fa-store"></i>
+                                <h5>Aucun revendeur enregistré</h5>
+                                <p>Commencez par ajouter votre premier partenaire revendeur.</p>
+                                <button class="btn btn-success" onclick="showAddResellerModal()">
+                                    <i class="fas fa-plus me-2"></i>Ajouter le Premier Revendeur
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                return;
+            }
+
+            tbody.innerHTML = resellersToShow.map(reseller => `
+                <tr class="reseller-row" onclick="viewReseller(${reseller.id})">
+                    <td>
+                        <div class="reseller-name">${reseller.company_name}</div>
+                        ${reseller.commercial_name ? `<small class="text-muted">${reseller.commercial_name}</small>` : ''}
+                    </td>
+                    <td>
+                        <div>${reseller.contact_person}</div>
+                        <div class="reseller-contact">
+                            ${reseller.email ? `<a href="mailto:${reseller.email}">${reseller.email}</a>` : ''}
+                            ${reseller.phone ? `<br><a href="tel:${reseller.phone}">${reseller.phone}</a>` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge-category badge-${reseller.category}">
+                            ${getCategoryLabel(reseller.category)}
+                        </span>
+                    </td>
+                    <td>
+                        ${reseller.region || '-'}
+                    </td>
+                    <td>
+                        <div class="discount-info">${reseller.discount_rate || 0}%</div>
+                        <div class="credit-info">Remise standard</div>
+                    </td>
+                    <td>
+                        <div>${formatCurrency(reseller.credit_limit || 0)}</div>
+                        <div class="credit-info">Limite autorisée</div>
+                    </td>
+                    <td>
+                        <span class="badge-status ${reseller.is_active ? 'badge-active' : 'badge-inactive'}">
+                            ${reseller.is_active ? 'Actif' : 'Inactif'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="action-btn edit" onclick="event.stopPropagation(); editReseller(${reseller.id})" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="event.stopPropagation(); deleteReseller(${reseller.id})" title="Supprimer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function setupSearchFilter() {
+            const searchInput = document.getElementById('searchInput');
+            
+            searchInput.addEventListener('input', function() {
+                filterResellers();
+            });
+        }
+
+        function filterResellers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            filteredResellers = resellers.filter(reseller => {
+                // Filtre de recherche textuelle
+                const matchesSearch = !searchTerm || 
+                    reseller.company_name.toLowerCase().includes(searchTerm) ||
+                    (reseller.commercial_name && reseller.commercial_name.toLowerCase().includes(searchTerm)) ||
+                    (reseller.contact_person && reseller.contact_person.toLowerCase().includes(searchTerm)) ||
+                    (reseller.email && reseller.email.toLowerCase().includes(searchTerm)) ||
+                    (reseller.region && reseller.region.toLowerCase().includes(searchTerm));
+                
+                // Filtre par catégorie
+                const matchesCategory = !categoryFilter || reseller.category === categoryFilter;
+                
+                // Filtre par statut
+                const matchesStatus = !statusFilter || reseller.is_active.toString() === statusFilter;
+                
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+            
+            updateResellersTable(filteredResellers);
+        }
+
+        function getCategoryLabel(category) {
+            const labels = {
+                'standard': 'Standard',
+                'premium': 'Premium',
+                'gold': 'Gold'
+            };
+            return labels[category] || 'Standard';
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function showAddResellerModal() {
+            currentEditingId = null;
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus me-2"></i>Nouveau Revendeur';
+            document.getElementById('resellerForm').reset();
+            document.getElementById('resellerId').value = '';
+            
+            // Valeurs par défaut
+            document.getElementById('category').value = 'standard';
+            document.getElementById('discountRate').value = '0';
+            document.getElementById('creditLimit').value = '0';
+            document.getElementById('paymentTerms').value = '30';
+            document.getElementById('isActive').value = 'true';
+            
+            const modal = new bootstrap.Modal(document.getElementById('resellerModal'));
+            modal.show();
+        }
+
+        function editReseller(resellerId) {
+            const reseller = resellers.find(r => r.id === resellerId);
+            if (!reseller) return;
+            
+            currentEditingId = resellerId;
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Modifier Revendeur';
+            
+            // Remplir le formulaire
+            document.getElementById('resellerId').value = reseller.id;
+            document.getElementById('companyName').value = reseller.company_name || '';
+            document.getElementById('commercialName').value = reseller.commercial_name || '';
+            document.getElementById('contactPerson').value = reseller.contact_person || '';
+            document.getElementById('email').value = reseller.email || '';
+            document.getElementById('phone').value = reseller.phone || '';
+            document.getElementById('region').value = reseller.region || '';
+            document.getElementById('hqAddress').value = reseller.hq_address || '';
+            document.getElementById('deliveryAddress').value = reseller.delivery_address || '';
+            document.getElementById('category').value = reseller.category || 'standard';
+            document.getElementById('discountRate').value = reseller.discount_rate || 0;
+            document.getElementById('creditLimit').value = reseller.credit_limit || 0;
+            document.getElementById('siret').value = reseller.siret || '';
+            document.getElementById('tvaNumber').value = reseller.tva_number || '';
+            document.getElementById('paymentTerms').value = reseller.payment_terms || 30;
+            document.getElementById('isActive').value = reseller.is_active ? 'true' : 'false';
+            document.getElementById('notes').value = reseller.notes || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('resellerModal'));
+            modal.show();
+        }
+
+        function viewReseller(resellerId) {
+            const reseller = resellers.find(r => r.id === resellerId);
+            if (reseller) {
+                // Pour l'instant, on ouvre en édition
+                editReseller(resellerId);
+            }
+        }
+
+        function copyHqAddress() {
+            const checkbox = document.getElementById('sameAsHq');
+            const hqAddress = document.getElementById('hqAddress').value;
+            const deliveryAddress = document.getElementById('deliveryAddress');
+            
+            if (checkbox.checked) {
+                deliveryAddress.value = hqAddress;
+                deliveryAddress.readOnly = true;
+            } else {
+                deliveryAddress.readOnly = false;
+            }
+        }
+
+        async function saveReseller() {
+            const form = document.getElementById('resellerForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const resellerData = {
+                company_name: document.getElementById('companyName').value.trim(),
+                commercial_name: document.getElementById('commercialName').value.trim() || null,
+                contact_person: document.getElementById('contactPerson').value.trim(),
+                email: document.getElementById('email').value.trim() || null,
+                phone: document.getElementById('phone').value.trim() || null,
+                region: document.getElementById('region').value.trim() || null,
+                hq_address: document.getElementById('hqAddress').value.trim() || null,
+                delivery_address: document.getElementById('deliveryAddress').value.trim() || null,
+                category: document.getElementById('category').value,
+                discount_rate: parseFloat(document.getElementById('discountRate').value) || 0,
+                credit_limit: parseFloat(document.getElementById('creditLimit').value) || 0,
+                siret: document.getElementById('siret').value.trim() || null,
+                tva_number: document.getElementById('tvaNumber').value.trim() || null,
+                payment_terms: parseInt(document.getElementById('paymentTerms').value) || 30,
+                is_active: document.getElementById('isActive').value === 'true',
+                notes: document.getElementById('notes').value.trim() || null
+            };
+
+            try {
+                if (currentEditingId) {
+                    // Modification
+                    await updateReseller(currentEditingId, resellerData);
+                } else {
+                    // Création
+                    await createReseller(resellerData);
+                }
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('resellerModal'));
+                modal.hide();
+                
+                await refreshResellers();
+                showToast('Revendeur enregistré avec succès', 'success');
+                
+            } catch (error) {
+                console.error('Erreur sauvegarde revendeur:', error);
+                showToast('Erreur lors de l\'enregistrement: ' + error.message, 'danger');
+            }
+        }
+
+        async function createReseller(resellerData) {
+            if (supabaseLoaded) {
+                const { data, error } = await supabase
+                    .from('revendeurs')
+                    .insert([resellerData])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                return data;
+            } else {
+                // Mode hors-ligne
+                const newReseller = {
+                    id: Math.max(...resellers.map(r => r.id), 0) + 1,
+                    ...resellerData,
+                    total_orders: 0,
+                    total_amount: 0.00,
+                    created_at: new Date().toISOString()
+                };
+                resellers.unshift(newReseller);
+                return newReseller;
+            }
+        }
+
+        async function updateReseller(resellerId, resellerData) {
+            if (supabaseLoaded) {
+                const { data, error } = await supabase
+                    .from('revendeurs')
+                    .update({
+                        ...resellerData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', resellerId)
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                return data;
+            } else {
+                // Mode hors-ligne
+                const index = resellers.findIndex(r => r.id === resellerId);
+                if (index !== -1) {
+                    resellers[index] = {
+                        ...resellers[index],
+                        ...resellerData,
+                        updated_at: new Date().toISOString()
+                    };
+                }
+                return resellers[index];
+            }
+        }
+
+        async function deleteReseller(resellerId) {
+            const reseller = resellers.find(r => r.id === resellerId);
+            if (!reseller) return;
+
+            if (!confirm(`Supprimer définitivement le revendeur "${reseller.company_name}" ?\n\nCette action est irréversible et supprimera toutes les données associées.`)) {
+                return;
+            }
+
+            try {
+                if (supabaseLoaded) {
+                    const { error } = await supabase
+                        .from('revendeurs')
+                        .delete()
+                        .eq('id', resellerId);
+                    
+                    if (error) throw error;
+                } else {
+                    // Mode hors-ligne
+                    resellers = resellers.filter(r => r.id !== resellerId);
+                }
+                
+                await refreshResellers();
+                showToast(`Revendeur "${reseller.company_name}" supprimé avec succès`, 'success');
+                
+            } catch (error) {
+                console.error('Erreur suppression revendeur:', error);
+                showToast('Erreur lors de la suppression: ' + error.message, 'danger');
+            }
+        }
+
+        async function refreshResellers() {
+            console.log('Actualisation des revendeurs...');
+            
+            if (supabaseLoaded) {
+                await loadResellersFromDB();
+            } else {
+                filteredResellers = resellers;
+                updateStats();
+                updateResellersTable();
+            }
+            
+            // Réinitialiser les filtres
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed`;
+            toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-${type === 'success' ? 'check' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>${message}</span>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        console.log('Page revendeurs initialisée');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</body>
+</html>

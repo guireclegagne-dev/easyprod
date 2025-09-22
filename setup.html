@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Initiale - Système de Production</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .setup-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .progress-step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        .progress-step.active {
+            background: #667eea;
+            color: white;
+        }
+        .progress-step.completed {
+            background: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <!-- En-tête -->
+        <div class="text-center mb-4">
+            <h1 class="text-primary">
+                <i class="fas fa-cogs me-2"></i>
+                Configuration Initiale
+            </h1>
+            <p class="text-muted">Configuration du système d'authentification</p>
+        </div>
+
+        <!-- Barre de progression -->
+        <div class="d-flex justify-content-center align-items-center mb-4">
+            <div class="progress-step active" id="step1-indicator">1</div>
+            <div class="border-top" style="width: 50px;"></div>
+            <div class="progress-step" id="step2-indicator">2</div>
+            <div class="border-top" style="width: 50px;"></div>
+            <div class="progress-step" id="step3-indicator">3</div>
+        </div>
+
+        <!-- Étape 1: Vérification de la base -->
+        <div class="step active" id="step1">
+            <h3><i class="fas fa-database me-2"></i>Vérification de la base de données</h3>
+            <p>Vérification de la structure de la base de données...</p>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div id="dbCheck">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Vérification en cours...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" onclick="checkDatabase()" id="checkDbBtn">
+                    Vérifier la base de données
+                </button>
+            </div>
+        </div>
+
+        <!-- Étape 2: Création de l'administrateur principal -->
+        <div class="step" id="step2">
+            <h3><i class="fas fa-user-shield me-2"></i>Administrateur Principal</h3>
+            <p>Créez le premier compte administrateur du système.</p>
+
+            <form id="adminForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="adminFirstName" required>
+                            <label>Prénom</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="adminLastName" required>
+                            <label>Nom</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="adminEmail" required>
+                    <label>Adresse email</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="adminPassword" required minlength="8">
+                    <label>Mot de passe</label>
+                    <div class="form-text">Minimum 8 caractères</div>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="adminPasswordConfirm" required>
+                    <label>Confirmer le mot de passe</label>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>Créer l'Administrateur
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Étape 3: Configuration terminée -->
+        <div class="step" id="step3">
+            <div class="text-center">
+                <div class="text-success mb-3">
+                    <i class="fas fa-check-circle fa-4x"></i>
+                </div>
+                <h3 class="text-success">Configuration Terminée !</h3>
+                <p class="text-muted mb-4">
+                    Le système d'authentification est maintenant configuré.
+                </p>
+
+                <div id="setupSummary" class="card mb-4">
+                    <div class="card-body text-start">
+                        <h6>Résumé de la configuration :</h6>
+                        <ul id="summaryList" class="list-unstyled mb-0">
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success btn-lg" onclick="goToLogin()">
+                        <i class="fas fa-sign-in-alt me-2"></i>Aller à la page de connexion
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="addAnotherUser()">
+                        <i class="fas fa-user-plus me-2"></i>Ajouter un autre utilisateur
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone d'alertes -->
+        <div id="alertContainer" class="mt-3"></div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+    <script>
+        // Configuration
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        
+        let supabase = null;
+        let currentStep = 1;
+        let setupResults = [];
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            // Gérer la soumission du formulaire admin
+            document.getElementById('adminForm').addEventListener('submit', handleCreateAdmin);
+            
+            // Démarrer la vérification automatiquement
+            setTimeout(checkDatabase, 1000);
+        });
+        
+        // Vérifier la base de données
+        async function checkDatabase() {
+            const checkDiv = document.getElementById('dbCheck');
+            const btn = document.getElementById('checkDbBtn');
+            
+            btn.disabled = true;
+            checkDiv.innerHTML = `
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Connexion à Supabase...
+                </div>
+            `;
+            
+            const checks = [];
+            
+            try {
+                // 1. Vérifier la connexion Supabase
+                checkDiv.innerHTML += `<div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Vérification de la connexion...
+                </div>`;
+                
+                const { data: testData, error: testError } = await supabase
+                    .from('users')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (testError && testError.code !== 'PGRST116') {
+                    throw new Error('Connexion échouée: ' + testError.message);
+                }
+                
+                checks.push({
+                    name: 'Connexion Supabase',
+                    status: 'success',
+                    message: 'Connexion établie'
+                });
+                
+                // 2. Vérifier la table users
+                checkDiv.innerHTML += `<div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Vérification de la table users...
+                </div>`;
+                
+                const { data: usersData, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+                
+                if (usersError && usersError.code === 'PGRST116') {
+                    // Table n'existe pas
+                    checks.push({
+                        name: 'Table users',
+                        status: 'warning',
+                        message: 'Table manquante - création nécessaire'
+                    });
+                    
+                    // Créer la table automatiquement
+                    await createUsersTable();
+                } else {
+                    checks.push({
+                        name: 'Table users',
+                        status: 'success',
+                        message: 'Table existante'
+                    });
+                }
+                
+                // 3. Vérifier s'il existe déjà des administrateurs
+                const { data: adminData, error: adminError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('is_admin', true)
+                    .limit(1);
+                
+                if (!adminError && adminData && adminData.length > 0) {
+                    checks.push({
+                        name: 'Administrateurs existants',
+                        status: 'info',
+                        message: `${adminData.length} administrateur(s) trouvé(s)`
+                    });
+                } else {
+                    checks.push({
+                        name: 'Administrateurs',
+                        status: 'warning',
+                        message: 'Aucun administrateur - création nécessaire'
+                    });
+                }
+                
+                // 4. Vérifier la table sessions
+                checkDiv.innerHTML += `<div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Vérification des sessions...
+                </div>`;
+                
+                const { data: sessionsData, error: sessionsError } = await supabase
+                    .from('user_sessions')
+                    .select('*')
+                    .limit(1);
+                
+                if (sessionsError && sessionsError.code === 'PGRST116') {
+                    checks.push({
+                        name: 'Table user_sessions',
+                        status: 'warning',
+                        message: 'Table manquante - création nécessaire'
+                    });
+                    
+                    await createSessionsTable();
+                } else {
+                    checks.push({
+                        name: 'Table user_sessions',
+                        status: 'success',
+                        message: 'Table existante'
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Erreur vérification:', error);
+                checks.push({
+                    name: 'Erreur générale',
+                    status: 'error',
+                    message: error.message
+                });
+            }
+            
+            // Afficher les résultats
+            displayCheckResults(checks);
+            setupResults = checks;
+            
+            // Passer à l'étape suivante si tout va bien
+            const hasErrors = checks.some(c => c.status === 'error');
+            if (!hasErrors) {
+                setTimeout(() => goToStep(2), 2000);
+            }
+            
+            btn.disabled = false;
+        }
+        
+        // Afficher les résultats de vérification
+        function displayCheckResults(checks) {
+            const checkDiv = document.getElementById('dbCheck');
+            
+            const html = checks.map(check => {
+                const icon = {
+                    'success': 'fa-check-circle text-success',
+                    'warning': 'fa-exclamation-triangle text-warning',
+                    'error': 'fa-times-circle text-danger',
+                    'info': 'fa-info-circle text-info'
+                }[check.status];
+                
+                return `
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas ${icon} me-2"></i>
+                        <strong>${check.name}:</strong>
+                        <span class="ms-2">${check.message}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            checkDiv.innerHTML = html;
+        }
+        
+        // Créer la table users
+        async function createUsersTable() {
+            // En production, utilisez une migration SQL appropriée
+            // Ici, nous utilisons l'API Supabase pour créer automatiquement
+            
+            // Créer un utilisateur de test pour initialiser la table
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .insert({
+                        email: 'init@temp.com',
+                        password_hash: 'temp',
+                        first_name: 'Init',
+                        last_name: 'User',
+                        is_admin: false,
+                        is_active: false
+                    });
+                
+                // Supprimer immédiatement cet utilisateur temporaire
+                await supabase
+                    .from('users')
+                    .delete()
+                    .eq('email', 'init@temp.com');
+                    
+            } catch (error) {
+                console.log('Table users probablement déjà créée');
+            }
+        }
+        
+        // Créer la table sessions
+        async function createSessionsTable() {
+            try {
+                const { error } = await supabase
+                    .from('user_sessions')
+                    .insert({
+                        user_id: 999999,
+                        token: 'init-token',
+                        expires_at: new Date().toISOString()
+                    });
+                
+                await supabase
+                    .from('user_sessions')
+                    .delete()
+                    .eq('token', 'init-token');
+                    
+            } catch (error) {
+                console.log('Table user_sessions probablement déjà créée');
+            }
+        }
+        
+        // Gérer la création de l'administrateur
+        async function handleCreateAdmin(e) {
+            e.preventDefault();
+            
+            const firstName = document.getElementById('adminFirstName').value.trim();
+            const lastName = document.getElementById('adminLastName').value.trim();
+            const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+            const password = document.getElementById('adminPassword').value;
+            const passwordConfirm = document.getElementById('adminPasswordConfirm').value;
+            
+            // Validation
+            if (password !== passwordConfirm) {
+                showAlert('Les mots de passe ne correspondent pas', 'danger');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showAlert('Le mot de passe doit contenir au moins 8 caractères', 'danger');
+                return;
+            }
+            
+            try {
+                // Vérifier si l'email existe déjà
+                const { data: existing, error: checkError } = await supabase
+                    .from('users')
+                    .select('email')
+                    .eq('email', email)
+                    .single();
+                
+                if (existing) {
+                    showAlert('Cette adresse email est déjà utilisée', 'danger');
+                    return;
+                }
+                
+                // Créer l'administrateur
+                const adminData = {
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: email,
+                    password_hash: hashPassword(password),
+                    is_admin: true,
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                const { data, error } = await supabase
+                    .from('users')
+                    .insert(adminData)
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                showAlert('Administrateur créé avec succès !', 'success');
+                
+                // Ajouter aux résultats
+                setupResults.push({
+                    name: 'Administrateur créé',
+                    status: 'success',
+                    message: `${firstName} ${lastName} (${email})`
+                });
+                
+                setTimeout(() => goToStep(3), 1500);
+                
+            } catch (error) {
+                console.error('Erreur création admin:', error);
+                showAlert('Erreur: ' + error.message, 'danger');
+            }
+        }
+        
+        // Changer d'étape
+        function goToStep(step) {
+            // Cacher l'étape actuelle
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            document.getElementById(`step${currentStep}-indicator`).classList.remove('active');
+            document.getElementById(`step${currentStep}-indicator`).classList.add('completed');
+            
+            // Afficher la nouvelle étape
+            document.getElementById(`step${step}`).classList.add('active');
+            document.getElementById(`step${step}-indicator`).classList.add('active');
+            
+            currentStep = step;
+            
+            // Actions spéciales par étape
+            if (step === 3) {
+                displaySetupSummary();
+            }
+        }
+        
+        // Afficher le résumé de configuration
+        function displaySetupSummary() {
+            const summaryList = document.getElementById('summaryList');
+            
+            const summaryItems = setupResults.map(result => {
+                const icon = {
+                    'success': 'fa-check text-success',
+                    'warning': 'fa-exclamation-triangle text-warning',
+                    'error': 'fa-times text-danger',
+                    'info': 'fa-info text-info'
+                }[result.status];
+                
+                return `
+                    <li class="mb-1">
+                        <i class="fas ${icon} me-2"></i>
+                        <strong>${result.name}:</strong> ${result.message}
+                    </li>
+                `;
+            }).join('');
+            
+            summaryList.innerHTML = summaryItems;
+        }
+        
+        // Aller à la page de connexion
+        function goToLogin() {
+            window.location.href = 'login.html';
+        }
+        
+        // Ajouter un autre utilisateur
+        function addAnotherUser() {
+            // Retourner à l'étape 2 pour créer un autre utilisateur
+            document.getElementById('adminForm').reset();
+            goToStep(2);
+        }
+        
+        // Fonctions utilitaires
+        function hashPassword(password) {
+            // TEMPORAIRE: en production, utilisez bcrypt côté serveur
+            return btoa(password + 'salt_secret_key');
+        }
+        
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            container.appendChild(alert);
+            
+            // Auto-supprimer après 5 secondes pour les messages de succès
+            if (type === 'success') {
+                setTimeout(() => {
+                    const alertEl = document.getElementById(alertId);
+                    if (alertEl) {
+                        const bsAlert = bootstrap.Alert.getInstance(alertEl);
+                        if (bsAlert) bsAlert.close();
+                    }
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

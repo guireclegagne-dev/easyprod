@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Interface Opérateur - Tertio Recycle</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .screen.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        .screen.exit-left {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+
+        /* Écran 1 - Sélection Opérateur */
+        .screen-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .screen-1 h1 {
+            font-size: 2.2em;
+            margin-bottom: 40px;
+            text-align: center;
+            font-weight: 300;
+        }
+
+        .operators-list {
+            width: 100%;
+            max-width: 400px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .operator-btn {
+            width: 100%;
+            padding: 20px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            color: white;
+            font-size: 1.3em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .operator-btn:hover,
+        .operator-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Écran 2 - Sélection Projet */
+        .screen-2 {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .screen-2 h1 {
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 300;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .projects-list {
+            width: 100%;
+            max-width: 400px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .project-btn {
+            width: 100%;
+            padding: 20px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .project-btn:hover,
+        .project-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Écran 3 - Sélection Opération */
+        .screen-3 {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+        }
+
+        .screen-3 h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 300;
+        }
+
+        .operations-list {
+            width: 100%;
+            max-width: 400px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .operation-btn {
+            width: 100%;
+            padding: 20px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .operation-btn:hover,
+        .operation-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Écran 4 - Départ */
+        .screen-4 {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .start-container {
+            text-align: center;
+        }
+
+        .start-container h1 {
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .task-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .task-info h3 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .task-info p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .start-btn {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 4px solid white;
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .start-btn:hover,
+        .start-btn:active {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Écran 5 - En cours */
+        .screen-5 {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+        }
+
+        .timer-container {
+            text-align: center;
+        }
+
+        .timer-container h1 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .timer-display {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 40px 0;
+            font-family: 'Courier New', monospace;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .task-controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 20px 40px;
+            border: 3px solid white;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.3em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-width: 150px;
+        }
+
+        .control-btn:hover,
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn.pause {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+        }
+
+        .control-btn.stop {
+            background: rgba(220, 53, 69, 0.2);
+            border-color: #dc3545;
+        }
+
+        /* Écran 6 - Pause */
+        .screen-6 {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .pause-container {
+            text-align: center;
+        }
+
+        .pause-container h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .pause-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .pause-timer {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+            opacity: 0.8;
+        }
+
+        .resume-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(46, 204, 113, 0.8);
+            border: 4px solid #2ecc71;
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .resume-btn:hover,
+        .resume-btn:active {
+            transform: scale(1.05);
+            background: rgba(46, 204, 113, 0.9);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Écran 7 - Finalisation */
+        .screen-7 {
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            color: white;
+        }
+
+        .completion-container {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .completion-container h1 {
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .summary-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            text-align: left;
+        }
+
+        .summary-info h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .summary-info p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .quantity-input-container {
+            margin: 30px 0;
+        }
+
+        .quantity-input-container label {
+            display: block;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .quantity-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 2em;
+            text-align: center;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .quantity-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .validate-btn {
+            width: 100%;
+            padding: 20px;
+            background: rgba(46, 204, 113, 0.8);
+            border: 3px solid #2ecc71;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.5em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .validate-btn:hover,
+        .validate-btn:active {
+            background: rgba(46, 204, 113, 1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .validate-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Message de remerciement */
+        .thank-you-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .thank-you-message.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .thank-you-message h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .thank-you-message p {
+            font-size: 1.5em;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .success-icon {
+            font-size: 5em;
+            margin-bottom: 30px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+
+        /* Navigation et utilitaires */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn:hover,
+        .back-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2em;
+            z-index: 1001;
+        }
+
+        .loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .screen {
+                padding: 15px;
+            }
+            
+            .timer-display {
+                font-size: 3em;
+                padding: 20px;
+            }
+            
+            .start-btn {
+                width: 200px;
+                height: 200px;
+                font-size: 2em;
+            }
+            
+            .resume-btn {
+                width: 150px;
+                height: 150px;
+                font-size: 1.5em;
+            }
+            
+            .control-btn {
+                padding: 15px 30px;
+                font-size: 1.1em;
+                min-width: 130px;
+            }
+        }
+
+        /* Utilitaires */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Status bar (optionnel) */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            z-index: 100;
+        }
+    </style>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Écran 1: Sélection Opérateur -->
+        <div class="screen screen-1 active" id="screen1">
+            <h1><i class="fas fa-user me-3"></i>Sélectionner Opérateur</h1>
+            <div class="operators-list" id="operatorsList">
+        <div style="text-align: center; padding: 40px; color: white;">
+            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+            <p>Chargement des opérateurs...</p>
+        </div>
+    </div>
+    </div>
+
+    <!-- Écran 2: Sélection Projet -->
+    <div class="screen screen-2" id="screen2">
+        <button class="back-btn" onclick="goToScreen(1)">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1><i class="fas fa-project-diagram me-3"></i>Sélectionner Projet</h1>
+        <div class="user-info" id="selectedUserInfo">
+            <!-- Généré par JavaScript -->
+        </div>
+        <div class="projects-list" id="projectsList">
+            <!-- Généré par JavaScript -->
+        </div>
+    </div>
+
+    <!-- Écran 3: Sélection Opération -->
+    <div class="screen screen-3" id="screen3">
+        <button class="back-btn" onclick="goToScreen(2)">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1><i class="fas fa-cogs me-3"></i>Sélectionner Opération</h1>
+        <div class="user-info" id="selectedProjectInfo">
+            <!-- Généré par JavaScript -->
+        </div>
+        <div class="operations-list" id="operationsList">
+            <!-- Généré par JavaScript -->
+        </div>
+    </div>
+
+    <!-- Écran 4: Départ -->
+    <div class="screen screen-4" id="screen4">
+        <button class="back-btn" onclick="goToScreen(3)">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="start-container">
+            <h1><i class="fas fa-rocket me-3"></i>Prêt à Démarrer</h1>
+            <div class="task-info" id="taskInfo">
+                <!-- Généré par JavaScript -->
+            </div>
+            <button class="start-btn" onclick="startTask()">
+                <i class="fas fa-play"></i>
+                <span style="margin-left: 15px;">DÉPART</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Écran 5: En cours -->
+    <div class="screen screen-5" id="screen5">
+        <div class="timer-container">
+            <h1><i class="fas fa-clock me-3"></i>Tâche en Cours</h1>
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <div class="task-controls">
+                <button class="control-btn pause" onclick="pauseTask()">
+                    <i class="fas fa-pause me-2"></i>PAUSE
+                </button>
+                <button class="control-btn stop" onclick="finishTask()">
+                    <i class="fas fa-stop me-2"></i>FIN DE TÂCHE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Écran 6: Pause -->
+    <div class="screen screen-6" id="screen6">
+        <div class="pause-container">
+            <h1><i class="fas fa-pause-circle me-3"></i>En Pause</h1>
+            <div class="pause-info">
+                <p><strong>Tâche en cours :</strong> <span id="pausedTaskName"></span></p>
+                <div class="pause-timer" id="pauseTimer">00:00:00</div>
+                <p><strong>Temps écoulé avant pause</strong></p>
+            </div>
+            <button class="resume-btn" onclick="resumeTask()">
+                <i class="fas fa-play"></i>
+                <span style="margin-left: 10px;">REPRISE</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Écran 7: Finalisation -->
+    <div class="screen screen-7" id="screen7">
+        <div class="completion-container">
+            <h1><i class="fas fa-check-circle me-3"></i>Finalisation</h1>
+            
+            <div class="summary-info" id="summaryInfo">
+                <!-- Généré par JavaScript -->
+            </div>
+            
+            <div class="quantity-input-container">
+                <label for="quantityInput">
+                    <i class="fas fa-box me-2"></i>Quantité Produite
+                </label>
+                <input 
+                    type="number" 
+                    id="quantityInput" 
+                    class="quantity-input" 
+                    placeholder="0"
+                    min="0"
+                    step="1"
+                >
+            </div>
+            
+            <button class="validate-btn" onclick="validateTask()" id="validateBtn">
+                <i class="fas fa-check me-2"></i>VALIDER TÂCHE
+            </button>
+        </div>
+    </div>
+
+    <!-- Message de remerciement -->
+    <div class="thank-you-message" id="thankYouMessage">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h1>Excellent Travail !</h1>
+        <p>Merci pour votre contribution.<br>Vos données ont été enregistrées.</p>
+    </div>
+
+    <!-- Loading indicator -->
+    <div class="loading hidden" id="loadingIndicator">
+        <i class="fas fa-spinner"></i>
+        Envoi des données...
+    </div>
+
+    <script>
+        // Données mockées
+        // Configuration Supabase
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        
+        // Variables globales
+        let supabase = null;
+        let operators = [];
+
+        const projectsDefault = [
+            {id: 1, name: 'Rénovation mobilier bureau', status: 'en_cours'},
+            {id: 2, name: 'Maintenance préventive', status: 'en_cours'},
+            {id: 3, name: 'Projet recyclage plastique', status: 'terminé'},
+            {id: 4, name: 'Formation nouveaux opérateurs', status: 'en_cours'},
+            {id: 5, name: 'Audit qualité', status: 'en_cours'}
+        ];
+
+        // Liste de projets alimentée par Supabase ou fallback
+        let projects = [];
+
+
+        const operations = [
+            // Opérations pour projet 1 (Rénovation mobilier)
+            {id: 1, name: 'Démontage', project_id: 1},
+            {id: 2, name: 'Nettoyage roulettes', project_id: 1},
+            {id: 3, name: 'Ponçage pied', project_id: 1},
+            {id: 4, name: 'Peinture pied', project_id: 1},
+            {id: 5, name: 'Polissage', project_id: 1},
+            {id: 6, name: 'Assemblage final', project_id: 1},
+            
+            // Opérations pour projet 2 (Maintenance)
+            {id: 7, name: 'Contrôle qualité', project_id: 2},
+            {id: 8, name: 'Maintenance préventive', project_id: 2},
+            {id: 9, name: 'Nettoyage général', project_id: 2},
+            
+            // Opérations pour projet 4 (Formation)
+            {id: 10, name: 'Formation théorique', project_id: 4},
+            {id: 11, name: 'Formation pratique', project_id: 4},
+            
+            // Opérations pour projet 5 (Audit)
+            {id: 12, name: 'Audit chez tertio', project_id: 5},
+            {id: 13, name: 'Contrôle documentation', project_id: 5}
+        ];
+
+        // Variables globales
+        let selectedOperator = null;
+        let selectedProject = null;
+        let selectedOperation = null;
+        let startTime = null;
+        let endTime = null;
+        let timerInterval = null;
+        let pauseStartTime = null;
+        let totalPauseTime = 0;
+        let currentScreen = 1;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();    
+        });
+
+        // Navigation entre écrans
+        function goToScreen(screenNumber) {
+            const currentScreenEl = document.getElementById(`screen${currentScreen}`);
+            const targetScreenEl = document.getElementById(`screen${screenNumber}`);
+            
+            // Animation de sortie
+            currentScreenEl.classList.add('exit-left');
+            currentScreenEl.classList.remove('active');
+            
+            // Animation d'entrée
+            setTimeout(() => {
+                targetScreenEl.classList.add('active');
+                currentScreen = screenNumber;
+                
+                // Réinitialiser les classes après transition
+                setTimeout(() => {
+                    currentScreenEl.classList.remove('exit-left');
+                }, 300);
+            }, 150);
+        }
+
+        // Écran 1: Charger les opérateurs
+        // Initialisation avec Supabase
+async function initializeApp() {
+    try {
+        // Initialiser Supabase
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Charger les opérateurs depuis la base
+        await loadOperatorsFromDB();
+    } catch (error) {
+        console.error('Erreur initialisation:', error);
+        // Fallback avec données de test
+        loadOperatorsDefault();
+    }
+}
+
+async function loadOperatorsFromDB() {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, first_name, last_name, name, is_active')
+            .eq('is_active', true)
+            .order('first_name');
+        
+        if (error) throw error;
+        
+        // Transformer les données pour correspondre au format attendu
+        operators = data.map(user => ({
+            id: user.id,
+            name: getUserDisplayName(user),
+            is_active: user.is_active
+        }));
+        
+        displayOperators();
+    } catch (error) {
+        console.error('Erreur chargement utilisateurs:', error);
+        loadOperatorsDefault();
+    }
+}
+
+function getUserDisplayName(user) {
+    if (user.first_name && user.last_name) {
+        return `${user.first_name} ${user.last_name}`;
+    } else if (user.name) {
+        return user.name;
+    } else {
+        return `Utilisateur ${user.id}`;
+    }
+}
+
+function loadOperatorsDefault() {
+    // Données de fallback
+    operators = [
+        {id: 1, name: 'Guilhem LEGAGNE', is_active: true},
+        {id: 2, name: 'Marie DUPONT', is_active: true},
+        {id: 3, name: 'Sophie BERNARD', is_active: true}
+    ];
+    displayOperators();
+}
+
+function displayOperators() {
+    const operatorsList = document.getElementById('operatorsList');
+    
+    if (operators.length === 0) {
+        operatorsList.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <p>Aucun opérateur actif trouvé</p>
+                <button class="operator-btn" onclick="loadOperatorsDefault()">
+                    Charger données de test
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    operatorsList.innerHTML = operators.map(operator => `
+        <button class="operator-btn" onclick="selectOperator(${operator.id})">
+            <i class="fas fa-user me-3"></i>${operator.name}
+        </button>
+    `).join('');
+}
+
+        function selectOperator(operatorId) {
+            selectedOperator = operators.find(op => op.id === operatorId);
+            loadProjects();
+            goToScreen(2);
+        }
+        // --- Projets (Écran 2): Chargement depuis Supabase ---
+        async function loadProjectsFromDB() {
+            try {
+                const { data, error } = await supabase
+                    .from('projects')
+                    .select('id, name')
+                    .order('name');
+                if (error) throw error;
+                
+                // Normalise le format attendu par le rendu
+                projects = (data || []).map(p => ({ id: p.id, name: p.name }));
+                
+                if (!projects.length) {
+                    // Si la base est vide, on garde un fallback local
+                    loadProjectsDefault();
+                } else {
+                    displayProjects();
+                }
+            } catch (err) {
+                console.error('Erreur chargement projets:', err);
+                loadProjectsDefault();
+            }
+        }
+
+        function loadProjectsDefault() {
+            // Ancienne liste locale, filtrée si besoin
+            const activeProjects = (projectsDefault || []).filter(p => p.status === 'en_cours' || typeof p.status === 'undefined');
+            projects = activeProjects.map(p => ({ id: p.id, name: p.name }));
+            displayProjects();
+        }
+
+        function displayProjects() {
+            const projectsList = document.getElementById('projectsList');
+            if (!projectsList) return;
+            
+            if (!projects.length) {
+                projectsList.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-triangle-exclamation me-2"></i>
+                        Aucun projet disponible pour le moment.
+                    </div>`;
+                return;
+            }
+            
+            projectsList.innerHTML = projects.map(project => `
+                <button class="project-btn" onclick="selectProject(${project.id})">
+                    <i class="fas fa-folder me-3"></i>${project.name}
+                </button>
+            `).join('');
+        }
+
+
+        // Écran 2: Charger les projets
+        async function loadProjects() {
+            document.getElementById('selectedUserInfo').innerHTML = `
+                <i class="fas fa-user me-2"></i><strong>${selectedOperator.name}</strong>
+            `;
+            // Charge depuis Supabase, avec repli local si nécessaire
+            await loadProjectsFromDB();
+        }</strong>
+            `;
+            
+            const activeProjects = projects.filter(project => project.status === 'en_cours');
+            
+            const projectsList = document.getElementById('projectsList');
+            projectsList.innerHTML = activeProjects.map(project => `
+                <button class="project-btn" onclick="selectProject(${project.id})">
+                    <i class="fas fa-folder me-3"></i>${project.name}
+                </button>
+            `).join('');
+        }
+
+        function selectProject(projectId) {
+            selectedProject = projects.find(proj => proj.id === projectId);
+            loadOperations();
+            goToScreen(3);
+        }
+
+        // Écran 3: Charger les opérations
+        function loadOperations() {
+            document.getElementById('selectedProjectInfo').innerHTML = `
+                <i class="fas fa-folder me-2"></i><strong>${selectedProject.name}</strong>
+            `;
+            
+            const projectOperations = operations.filter(op => op.project_id === selectedProject.id);
+            
+            const operationsList = document.getElementById('operationsList');
+            operationsList.innerHTML = projectOperations.map(operation => `
+                <button class="operation-btn" onclick="selectOperation(${operation.id})">
+                    <i class="fas fa-cog me-3"></i>${operation.name}
+                </button>
+            `).join('');
+        }
+
+        function selectOperation(operationId) {
+            selectedOperation = operations.find(op => op.id === operationId);
+            loadTaskInfo();
+            goToScreen(4);
+        }
+
+        // Écran 4: Informations de la tâche
+        function loadTaskInfo() {
+            document.getElementById('taskInfo').innerHTML = `
+                <h3><i class="fas fa-info-circle me-2"></i>Récapitulatif</h3>
+                <p><strong>Opérateur:</strong> ${selectedOperator.name}</p>
+                <p><strong>Projet:</strong> ${selectedProject.name}</p>
+                <p><strong>Opération:</strong> ${selectedOperation.name}</p>
+            `;
+        }
+
+        // Démarrer la tâche
+        function startTask() {
+            startTime = new Date();
+            totalPauseTime = 0;
+            startTimer();
+            goToScreen(5);
+        }
+
+        // Gestion du timer
+        function startTimer() {
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const now = new Date();
+            const elapsed = now - startTime - totalPauseTime;
+            const timerDisplay = document.getElementById('timerDisplay');
+            const pauseTimer = document.getElementById('pauseTimer');
+            
+            const timeString = formatTime(elapsed);
+            
+            if (timerDisplay) timerDisplay.textContent = timeString;
+            if (pauseTimer) pauseTimer.textContent = timeString;
+        }
+
+        function formatTime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // Pause
+        function pauseTask() {
+            pauseStartTime = new Date();
+            stopTimer();
+            
+            document.getElementById('pausedTaskName').textContent = selectedOperation.name;
+            goToScreen(6);
+        }
+
+        function resumeTask() {
+            if (pauseStartTime) {
+                const pauseEnd = new Date();
+                totalPauseTime += pauseEnd - pauseStartTime;
+                pauseStartTime = null;
+            }
+            
+            startTimer();
+            goToScreen(5);
+        }
+
+        // Finir la tâche
+        function finishTask() {
+            endTime = new Date();
+            stopTimer();
+            loadSummary();
+            goToScreen(7);
+        }
+
+        // Écran 7: Récapitulatif
+        function loadSummary() {
+            const totalTime = endTime - startTime - totalPauseTime;
+            const timeString = formatTime(totalTime);
+            
+            document.getElementById('summaryInfo').innerHTML = `
+                <h3><i class="fas fa-clock me-2"></i>Récapitulatif de la Tâche</h3>
+                <p><strong>Opérateur:</strong> ${selectedOperator.name}</p>
+                <p><strong>Projet:</strong> ${selectedProject.name}</p>
+                <p><strong>Opération:</strong> ${selectedOperation.name}</p>
+                <p><strong>Heure de début:</strong> ${startTime.toLocaleTimeString()}</p>
+                <p><strong>Heure de fin:</strong> ${endTime.toLocaleTimeString()}</p>
+                <p><strong>Temps d'exécution:</strong> ${timeString}</p>
+            `;
+            
+            // Reset du champ quantité
+            document.getElementById('quantityInput').value = '';
+            document.getElementById('validateBtn').disabled = false;
+        }
+
+        // Validation de la tâche
+        function validateTask() {
+            const quantity = document.getElementById('quantityInput').value;
+            
+            if (!quantity || quantity <= 0) {
+                alert('Veuillez saisir une quantité valide.');
+                return;
+            }
+            
+            const validateBtn = document.getElementById('validateBtn');
+            validateBtn.disabled = true;
+            
+            // Afficher le loading
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            
+            // Préparer les données à envoyer
+            const taskData = {
+                operator_id: selectedOperator.id,
+                operator_name: selectedOperator.name,
+                project_id: selectedProject.id,
+                project_name: selectedProject.name,
+                operation_id: selectedOperation.id,
+                operation_name: selectedOperation.name,
+                start_time: startTime.toISOString(),
+                end_time: endTime.toISOString(),
+                execution_time: endTime - startTime - totalPauseTime,
+                execution_time_formatted: formatTime(endTime - startTime - totalPauseTime),
+                quantity_produced: parseInt(quantity),
+                pause_time_total: totalPauseTime,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Simuler l'envoi des données (remplacer par vraie API)
+            sendDataToManager(taskData);
+        }
+
+        // Envoi des données vers le dashboard manager
+        function sendDataToManager(taskData) {
+            console.log('📊 Données envoyées vers Dashboard Manager:', taskData);
+            
+            // Simulation d'envoi API
+            setTimeout(() => {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                
+                // Sauvegarder localement pour demo (remplacer par vraie API)
+                saveTaskDataLocally(taskData);
+                
+                // Afficher le message de remerciement
+                showThankYouMessage();
+            }, 2000);
+        }
+
+        // Sauvegarde locale pour démo
+        function saveTaskDataLocally(taskData) {
+            let savedTasks = JSON.parse(localStorage.getItem('productionTasks') || '[]');
+            savedTasks.push(taskData);
+            localStorage.setItem('productionTasks', JSON.stringify(savedTasks));
+            
+            console.log('✅ Tâche sauvegardée localement. Total des tâches:', savedTasks.length);
+        }
+
+        // Message de remerciement
+        function showThankYouMessage() {
+            const thankYouEl = document.getElementById('thankYouMessage');
+            thankYouEl.classList.add('show');
+            
+            // Messages de remerciement variés
+            const messages = [
+                { title: 'Excellent Travail !', text: 'Merci pour votre contribution.<br>Vos données ont été enregistrées.' },
+                { title: 'Mission Accomplie !', text: 'Bravo ! Votre travail de qualité<br>fait la différence.' },
+                { title: 'Parfait !', text: 'Merci pour votre professionnalisme.<br>Continuez comme ça !' },
+                { title: 'Super Boulot !', text: 'Votre efficacité est remarquable.<br>Merci pour votre engagement.' },
+                { title: 'Formidable !', text: 'Chaque tâche accomplie nous rapproche<br>de nos objectifs. Merci !' }
+            ];
+            
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            
+            thankYouEl.querySelector('h1').textContent = randomMessage.title;
+            thankYouEl.querySelector('p').innerHTML = randomMessage.text;
+            
+            // Retour automatique à l'écran 1 après 4 secondes
+            setTimeout(() => {
+                thankYouEl.classList.remove('show');
+                resetWorkflow();
+                goToScreen(1);
+            }, 4000);
+        }
+
+        // Réinitialiser le workflow
+        function resetWorkflow() {
+            selectedOperator = null;
+            selectedProject = null;
+            selectedOperation = null;
+            startTime = null;
+            endTime = null;
+            totalPauseTime = 0;
+            pauseStartTime = null;
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // Gestion des événements tactiles pour améliorer l'UX mobile
+        document.addEventListener('touchstart', function() {}, {passive: true});
+
+        // Empêcher le zoom sur double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Prévenir la sélection de texte accidentelle
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+
+        // Gestion de l'orientation et du redimensionnement
+        window.addEventListener('orientationchange', function() {
+            setTimeout(function() {
+                window.scrollTo(0, 1);
+            }, 100);
+        });
+
+        // Debug: fonction pour vider les données locales
+        function clearLocalData() {
+            localStorage.removeItem('productionTasks');
+            console.log('🗑️ Données locales effacées');
+        }
+
+        // Debug: fonction pour voir les données locales
+        function viewLocalData() {
+            const tasks = JSON.parse(localStorage.getItem('productionTasks') || '[]');
+            console.log('📋 Tâches enregistrées:', tasks);
+            return tasks;
+        }
+
+        // Exposition des fonctions debug dans la console
+        window.debugApp = {
+            clearData: clearLocalData,
+            viewData: viewLocalData,
+            goToScreen: goToScreen,
+            resetWorkflow: resetWorkflow
+        };
+
+        console.log('🚀 Interface Opérateur initialisée');
+        console.log('📱 Utilisez debugApp.viewData() pour voir les données');
+        console.log('🗑️ Utilisez debugApp.clearData() pour effacer les données');
+    </script>
+</body>
+</html>

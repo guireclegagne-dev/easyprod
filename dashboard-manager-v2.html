@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Manager V2 - EasyProd by Luceleanne</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --manager-color: #8e44ad;
+            --chatbot-color: #6c5ce7;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--manager-color) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+
+        .container-main {
+            margin-top: 30px;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            min-height: 70vh;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .page-header h1 {
+            color: var(--manager-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .page-header .subtitle {
+            color: #6c757d;
+            font-size: 1.1em;
+        }
+
+        /* Styles pour les vignettes */
+        .widget-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .widget-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .widget-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            color: white;
+        }
+
+        .widget-icon.primary { background: var(--secondary-color); }
+        .widget-icon.success { background: var(--success-color); }
+        .widget-icon.info { background: var(--info-color); }
+        .widget-icon.warning { background: var(--warning-color); }
+
+        .widget-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .widget-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .widget-summary {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin: 0;
+        }
+
+        .widget-action-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .widget-action-btn:hover {
+            background: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .widget-help-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--chatbot-color);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .widget-help-btn:hover {
+            background: #5a4fcf;
+            transform: scale(1.1);
+        }
+
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+        }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+
+        .connection-status.connected { background: var(--success-color); }
+        .connection-status.connecting { background: var(--warning-color); }
+        .connection-status.disconnected { background: var(--danger-color); }
+
+        /* Chatbot Styles */
+        .chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 2000;
+            overflow: hidden;
+        }
+
+        .chatbot-container.open {
+            display: flex;
+        }
+
+        .chatbot-header {
+            background: var(--chatbot-color);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbot-header h5 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 350px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.bot {
+            text-align: left;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message.bot .message-bubble {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .message.user .message-bubble {
+            background: var(--chatbot-color);
+            color: white;
+        }
+
+        .chatbot-input {
+            padding: 15px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chatbot-input input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .chatbot-input button {
+            background: var(--chatbot-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--chatbot-color);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1500;
+        }
+
+        .chatbot-toggle:hover {
+            background: #5a4fcf;
+            transform: scale(1.1);
+        }
+
+        .quick-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .quick-question {
+            background: #e9ecef;
+            border: none;
+            border-radius: 15px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-question:hover {
+            background: var(--chatbot-color);
+            color: white;
+        }
+
+        /* Modal détails */
+        .widget-modal .modal-dialog {
+            max-width: 700px;
+        }
+
+        .widget-modal .modal-header {
+            border-bottom: 2px solid #f8f9fa;
+        }
+
+        .widget-modal .modal-title {
+            display: flex;
+            align-items: center;
+        }
+
+        .widget-modal .modal-title .widget-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            margin-right: 15px;
+            margin-bottom: 0;
+        }
+
+        .detail-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .detail-value {
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .progress-bar-custom {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--success-color);
+            transition: width 0.3s ease;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid #e9ecef;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .task-title {
+            font-weight: 500;
+            color: #495057;
+            margin: 0;
+        }
+
+        .task-status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-en-cours {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-terminee {
+            background: #e2e3e5;
+            color: #6c757d;
+        }
+
+        .task-details {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .project-section {
+            margin-bottom: 25px;
+        }
+
+        .project-header {
+            background: #e9ecef;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-name {
+            font-weight: 600;
+            color: #495057;
+            margin: 0;
+        }
+
+        .project-count {
+            background: var(--info-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Styles pour les anomalies et leurs actions */
+        .anomaly-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .anomaly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .anomaly-type {
+            background: #ffc107;
+            color: #212529;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .anomaly-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .btn-fix {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-fix:hover {
+            background: #218838;
+        }
+
+        .btn-disable {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-disable:hover {
+            background: #c82333;
+        }
+
+        .btn-reassign {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-reassign:hover {
+            background: #138496;
+        }
+
+        /* Formulaires d'action */
+        .action-form {
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .action-form.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 500px; }
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: end;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: end;
+            margin-top: 15px;
+        }
+
+        .btn-submit {
+            background: #28a745;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .error-message-form {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-crown me-2"></i>
+                Dashboard Manager V2 - EasyProd by Luceleanne
+            </a>
+            <div class="navbar-nav ms-auto">
+                    <a href="console-admin-standalone.html" class="btn btn-outline-light me-3">
+                        <i class="fas fa-arrow-left me-2"></i>Retour Console Admin
+                    </a>
+                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="connection-status" id="connectionStatus">
+        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+    </div>  
+
+    <div class="container">
+        <div class="container-main">
+            <div class="page-header">
+                <h1><i class="fas fa-chart-line me-3"></i>Dashboard Manager V2</h1>
+                <p class="subtitle">Tableau de bord avancé pour la supervision stratégique</p>
+            </div>
+
+            <!-- Première ligne de vignettes -->
+            <div class="row mb-4">
+                <!-- Vignette 1 - Projets Actifs -->
+                <div class="col-md-6">
+                    <div class="widget-card" onclick="openWidgetModal(1)">
+                        <button class="widget-help-btn" onclick="event.stopPropagation(); askAboutWidget(1)" title="Expliquer cet indicateur">
+                            <i class="fas fa-question"></i>
+                        </button>
+                        <button class="widget-action-btn" onclick="event.stopPropagation(); window.location.href='kpi-projets.html'" title="Voir les KPIs détaillés">
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                        <div class="widget-icon primary">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <h3 class="widget-title">Projets Actifs</h3>
+                        <div id="widget1-content">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vignette 2 - Opérations du jour -->
+                <div class="col-md-6">
+                    <div class="widget-card" onclick="openWidgetModal(2)">
+                        <button class="widget-help-btn" onclick="event.stopPropagation(); askAboutWidget(2)" title="Expliquer cet indicateur">
+                            <i class="fas fa-question"></i>
+                        </button>
+                        <button class="widget-action-btn" onclick="event.stopPropagation(); window.location.href='dashboard-tasks.html'" title="Voir le tableau des tâches">
+                            <i class="fas fa-tasks"></i>
+                        </button>
+                        <div class="widget-icon info">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 class="widget-title">Opérations du jour</h3>
+                        <div id="widget2-content">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Deuxième ligne de vignettes -->
+            <div class="row">
+                <!-- Vignette 3 - Revenus -->
+                <div class="col-md-6">
+                    <div class="widget-card" onclick="openWidgetModal(3)">
+                        <button class="widget-help-btn" onclick="event.stopPropagation(); askAboutWidget(3)" title="Expliquer cet indicateur">
+                            <i class="fas fa-question"></i>
+                        </button>
+                        <div class="widget-icon success">
+                            <i class="fas fa-euro-sign"></i>
+                        </div>
+                        <h3 class="widget-title">Revenus</h3>
+                        <div id="widget3-content">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vignette 4 - Anomalies -->
+                <div class="col-md-6">
+                    <div class="widget-card" onclick="openWidgetModal(4)">
+                        <button class="widget-help-btn" onclick="event.stopPropagation(); askAboutWidget(4)" title="Expliquer cet indicateur">
+                            <i class="fas fa-question"></i>
+                        </button>
+                        <div class="widget-icon warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3 class="widget-title">Anomalies</h3>
+                        <div id="widget4-content">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour les détails -->
+    <div class="modal fade widget-modal" id="widgetModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <div class="widget-icon primary">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        Détails
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin me-2"></i> Chargement des détails...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot -->
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+        <i class="fas fa-comment"></i>
+    </button>
+
+    <div class="chatbot-container" id="chatbotContainer">
+        <div class="chatbot-header">
+            <h5><i class="fas fa-robot me-2"></i>Assistant Dashboard</h5>
+            <button class="chatbot-close" onclick="toggleChatbot()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    Bonjour ! Je suis votre assistant. Mon rôle est de vous aider à utiliser Easyprod, de répondre à vos questions sur son utilisation et de vous apporter quelques conseils.
+                </div>
+                <div class="quick-questions">
+                    <button class="quick-question" onclick="sendMessage('Comment interpréter les projets actifs ?')">Projets actifs</button>
+                    <button class="quick-question" onclick="sendMessage('Que signifie la progression moyenne ?')">Progression</button>
+                    <button class="quick-question" onclick="sendMessage('Comment sont calculés les revenus ?')">Revenus</button>
+                </div>
+            </div>
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatbotInput" placeholder="Posez votre question..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendUserMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+        <script>
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        // Variables globales
+        let supabase = null;
+        let supabaseLoaded = false;
+        let widgetData = {};
+        let conversationHistory = [];
+        let failedAnswersCount = 0;
+        let askSatisfactionNext = false;
+        let activeProjects = [];
+        let activeUsers = [];
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+        });
+
+        async function initApp() {
+            updateConnectionStatus('connecting', 'Connexion...');
+            
+            try {
+                // Initialiser Supabase
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseLoaded = true;
+                
+                // Test de connexion
+                const { data, error } = await supabase.from('projects').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                updateConnectionStatus('connected', 'Base de données connectée');
+                
+                // Charger toutes les vignettes
+                await Promise.all([
+                    loadWidget1_ActiveProjects(),
+                    loadWidget2_CurrentOperations(),
+                    loadWidget3_Revenue(),
+                    loadWidget4_Anomalies()
+                ]);
+                
+            } catch (error) {
+                console.error('Erreur Supabase:', error);
+                updateConnectionStatus('disconnected', 'Erreur de connexion');
+                showError('Erreur de connexion à la base de données');
+            }
+        }
+
+        // Vignette 1 - Projets Actifs
+        async function loadWidget1_ActiveProjects() {
+            try {
+                const { data: projects, error: projectsError } = await supabase
+                    .from('projects')
+                    .select('id, name')
+                    .eq('status', 'active');
+
+                if (projectsError) throw projectsError;
+
+                if (!projects || projects.length === 0) {
+                    document.getElementById('widget1-content').innerHTML = `
+                        <div class="widget-value">0</div>
+                        <p class="widget-summary">Aucun projet actif</p>
+                    `;
+                    widgetData[1] = { count: 0, projects: [] };
+                    return;
+                }
+
+                const projectsWithProgress = [];
+                let totalProgress = 0;
+                
+                for (const project of projects) {
+                    const { data: projectDetails, error: detailsError } = await supabase
+                        .from('project_details')
+                        .select('nombre_sieges')
+                        .eq('project_id', project.id)
+                        .single();
+
+                    if (detailsError || !projectDetails) {
+                        projectsWithProgress.push({
+                            name: project.name,
+                            progress: 0,
+                            totalSeats: 0,
+                            packedSeats: 0
+                        });
+                        continue;
+                    }
+
+                    const { data: tasks, error: tasksError } = await supabase
+                        .from('tasks')
+                        .select('quantity')
+                        .eq('project_id', project.id)
+                        .eq('operation_id', 12);
+
+                    let packedSeats = 0;
+                    if (!tasksError && tasks) {
+                        packedSeats = tasks.reduce((sum, task) => sum + (task.quantity || 0), 0);
+                    }
+
+                    const totalSeats = projectDetails.nombre_sieges || 0;
+                    const progress = totalSeats > 0 ? Math.round((packedSeats / totalSeats) * 100) : 0;
+                    totalProgress += progress;
+
+                    projectsWithProgress.push({
+                        name: project.name,
+                        progress: progress,
+                        totalSeats: totalSeats,
+                        packedSeats: packedSeats
+                    });
+                }
+
+                const avgProgress = projects.length > 0 ? Math.round(totalProgress / projects.length) : 0;
+
+                document.getElementById('widget1-content').innerHTML = `
+                    <div class="widget-value">${projects.length}</div>
+                    <p class="widget-summary">Progression moyenne: ${avgProgress}%</p>
+                `;
+
+                widgetData[1] = {
+                    count: projects.length,
+                    avgProgress: avgProgress,
+                    projects: projectsWithProgress
+                };
+
+            } catch (error) {
+                console.error('Erreur widget 1:', error);
+                document.getElementById('widget1-content').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur de chargement
+                    </div>
+                `;
+            }
+        }
+
+        // Vignette 2 - Opérations du jour
+        async function loadWidget2_CurrentOperations() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                
+                const { data: tasks, error } = await supabase
+                    .from('tasks')
+                    .select('project_name, operation_name, operator_name, started_at, ended_at')
+                    .gte('started_at', today + 'T00:00:00')
+                    .lt('started_at', today + 'T23:59:59');
+
+                if (error) throw error;
+
+                if (!tasks || tasks.length === 0) {
+                    document.getElementById('widget2-content').innerHTML = `
+                        <div class="widget-value">0</div>
+                        <p class="widget-summary">Aucune opération aujourd'hui</p>
+                    `;
+                    widgetData[2] = { count: 0, operations: [], projectGroups: {} };
+                    return;
+                }
+
+                const projectGroups = {};
+                const enrichedTasks = [];
+                
+                tasks.forEach(task => {
+                    const projectName = task.project_name || 'Projet inconnu';
+                    const operatorName = task.operator_name || 'Non assigné';
+                    const status = task.ended_at ? 'terminée' : 'en cours';
+                    
+                    const enrichedTask = {
+                        projectName: projectName,
+                        operationName: task.operation_name || 'Opération inconnue',
+                        operatorName: operatorName,
+                        status: status,
+                        startedAt: task.started_at,
+                        endedAt: task.ended_at
+                    };
+                    
+                    enrichedTasks.push(enrichedTask);
+                    
+                    if (!projectGroups[projectName]) {
+                        projectGroups[projectName] = [];
+                    }
+                    projectGroups[projectName].push(enrichedTask);
+                });
+
+                const projectCount = Object.keys(projectGroups).length;
+                const tasksInProgress = enrichedTasks.filter(task => task.status === 'en cours').length;
+
+                document.getElementById('widget2-content').innerHTML = `
+                    <div class="widget-value">${tasks.length}</div>
+                    <p class="widget-summary">${tasksInProgress} en cours | ${projectCount} projet(s)</p>
+                `;
+
+                widgetData[2] = {
+                    count: tasks.length,
+                    projectCount: projectCount,
+                    tasksInProgress: tasksInProgress,
+                    operations: enrichedTasks,
+                    projectGroups: projectGroups
+                };
+
+            } catch (error) {
+                console.error('Erreur widget 2:', error);
+                document.getElementById('widget2-content').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur de chargement
+                    </div>
+                `;
+            }
+        }
+
+        // Vignette 3 - Revenus
+        async function loadWidget3_Revenue() {
+            try {
+                const now = new Date();
+                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                
+                let totalCA = 0;
+                let totalDepenses = 0;
+                const projectDetails = [];
+                
+                const { data: projects, error: projectsError } = await supabase
+                    .from('projects')
+                    .select('id, name');
+
+                if (projectsError) throw projectsError;
+
+                if (projects && projects.length > 0) {
+                    for (const project of projects) {
+                        let projectCA = 0;
+                        let projectDepenses = 0;
+
+                        const { data: projectDetailsData, error: detailsError } = await supabase
+                            .from('project_details')
+                            .select('budget_prestation, nombre_sieges')
+                            .eq('project_id', project.id)
+                            .single();
+
+                        if (detailsError || !projectDetailsData) continue;
+
+                        const { data: packedTasks, error: packedError } = await supabase
+                            .from('tasks')
+                            .select('quantity')
+                            .eq('project_id', project.id)
+                            .eq('operation_id', 12)
+                            .gte('started_at', firstDayOfMonth + 'T00:00:00');
+
+                        let packedSeats = 0;
+                        if (!packedError && packedTasks) {
+                            packedSeats = packedTasks.reduce((sum, task) => sum + (task.quantity || 0), 0);
+                        }
+
+                        const budgetPrestation = projectDetailsData.budget_prestation || 0;
+                        const nombreSieges = projectDetailsData.nombre_sieges || 1;
+                        projectCA = (budgetPrestation / nombreSieges) * packedSeats;
+                        totalCA += projectCA;
+
+                        const { data: allTasks, error: allTasksError } = await supabase
+                            .from('tasks')
+                            .select('started_at, ended_at, operator_name')
+                            .eq('project_id', project.id)
+                            .gte('started_at', firstDayOfMonth + 'T00:00:00')
+                            .not('ended_at', 'is', null);
+
+                        if (!allTasksError && allTasks) {
+                            for (const task of allTasks) {
+                                if (task.started_at && task.ended_at) {
+                                    const startTime = new Date(task.started_at);
+                                    const endTime = new Date(task.ended_at);
+                                    const hoursWorked = (endTime - startTime) / (1000 * 60 * 60);
+                                    projectDepenses += hoursWorked * 15;
+                                }
+                            }
+                        }
+
+                        const { data: purchases, error: purchasesError } = await supabase
+                            .from('project_purchases')
+                            .select('amount')
+                            .eq('project_id', project.id);
+
+                        let projectPurchases = 0;
+                        if (!purchasesError && purchases) {
+                            const totalPurchases = purchases.reduce((sum, purchase) => sum + (purchase.amount || 0), 0);
+                            if (nombreSieges > 0) {
+                                projectPurchases = (totalPurchases / nombreSieges) * packedSeats;
+                            }
+                            projectDepenses += projectPurchases;
+                        }
+
+                        totalDepenses += projectDepenses;
+                        
+                        if (projectCA > 0 || projectDepenses > 0) {
+                            projectDetails.push({
+                                name: project.name,
+                                ca: projectCA,
+                                depenses: projectDepenses,
+                                mainOeuvre: projectDepenses - projectPurchases,
+                                achatsExternes: projectPurchases,
+                                marge: projectCA - projectDepenses
+                            });
+                        }
+                    }
+                }
+
+                const marge = totalCA - totalDepenses;
+
+                document.getElementById('widget3-content').innerHTML = `
+                    <div class="widget-value">${marge.toFixed(0)}€</div>
+                    <p class="widget-summary">Marge du mois</p>
+                `;
+
+                widgetData[3] = {
+                    totalCA: totalCA,
+                    totalDepenses: totalDepenses,
+                    marge: marge,
+                    projects: projectDetails
+                };
+
+            } catch (error) {
+                console.error('Erreur widget 3:', error);
+                document.getElementById('widget3-content').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur de chargement
+                    </div>
+                `;
+            }
+        }
+
+        // Vignette 4 - Anomalies
+        async function loadWidget4_Anomalies() {
+            try {
+                let totalAnomalies = 0;
+                const anomaliesDetails = [];
+
+                const { data: allUsers, error: usersError } = await supabase
+                    .from('users')
+                    .select('first_name, last_name, name, id')
+                    .eq('is_active', true);
+
+                const { data: activeTasks, error: activeTasksError } = await supabase
+                    .from('tasks')
+                    .select('operator_name')
+                    .not('started_at', 'is', null)
+                    .is('ended_at', null);
+
+                if (!usersError && allUsers && !activeTasksError) {
+                    const activeOperators = new Set();
+                    if (activeTasks) {
+                        activeTasks.forEach(task => {
+                            if (task.operator_name) {
+                                activeOperators.add(task.operator_name);
+                            }
+                        });
+                    }
+
+                    allUsers.forEach(user => {
+                        const userName = user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : user.name || 'Utilisateur inconnu';
+                        
+                        if (!activeOperators.has(userName)) {
+                            totalAnomalies++;
+                            anomaliesDetails.push({
+                                type: 'Opérateur inactif',
+                                description: userName,
+                                id: user.id,
+                                category: 'inactive_operator'
+                            });
+                        }
+                    });
+                }
+
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                const { data: oldTasks, error: oldTasksError } = await supabase
+                    .from('tasks')
+                    .select('id, operation_name, project_name, operator_name, started_at')
+                    .not('started_at', 'is', null)
+                    .is('ended_at', null)
+                    .lt('started_at', yesterdayStr + 'T23:59:59');
+
+                if (!oldTasksError && oldTasks) {
+                    oldTasks.forEach(task => {
+                        totalAnomalies++;
+                        anomaliesDetails.push({
+                            type: 'Tâche en retard',
+                            description: `${task.operation_name} (${task.project_name})`,
+                            id: task.id,
+                            operator: task.operator_name,
+                            started_at: task.started_at,
+                            category: 'delayed_task'
+                        });
+                    });
+                }
+
+                document.getElementById('widget4-content').innerHTML = `
+                    <div class="widget-value">${totalAnomalies}</div>
+                    <p class="widget-summary">${totalAnomalies > 0 ? 'Attention requise' : 'Tout va bien'}</p>
+                `;
+
+                widgetData[4] = {
+                    count: totalAnomalies,
+                    anomalies: anomaliesDetails
+                };
+
+            } catch (error) {
+                console.error('Erreur widget 4:', error);
+                document.getElementById('widget4-content').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur de chargement
+                    </div>
+                `;
+            }
+        }
+
+        // Fonctions pour la correction des anomalies
+        async function loadActiveProjects() {
+            try {
+                const { data: projects, error } = await supabase
+                    .from('projects')
+                    .select('id, name')
+                    .eq('status', 'active');
+                
+                if (error) throw error;
+                activeProjects = projects || [];
+                return activeProjects;
+            } catch (error) {
+                console.error('Erreur chargement projets actifs:', error);
+                return [];
+            }
+        }
+
+        async function loadActiveUsers() {
+            try {
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('id, first_name, last_name, name')
+                    .eq('is_active', true);
+                
+                if (error) throw error;
+                activeUsers = users || [];
+                return activeUsers;
+            } catch (error) {
+                console.error('Erreur chargement utilisateurs actifs:', error);
+                return [];
+            }
+        }
+
+        async function loadProjectOperations(projectId) {
+            try {
+                const { data: projectDetails, error: detailsError } = await supabase
+                    .from('project_details')
+                    .select('selected_operations')
+                    .eq('project_id', projectId)
+                    .single();
+
+                if (detailsError || !projectDetails?.selected_operations) {
+                    return [];
+                }
+
+                const operationIds = JSON.parse(projectDetails.selected_operations);
+                
+                const { data: operations, error: operationsError } = await supabase
+                    .from('operations')
+                    .select('id, name')
+                    .in('id', operationIds);
+
+                if (operationsError) throw operationsError;
+                return operations || [];
+            } catch (error) {
+                console.error('Erreur chargement opérations projet:', error);
+                return [];
+            }
+        }
+
+        async function disableUser(userId) {
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .update({ is_active: false })
+                    .eq('id', userId);
+
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Erreur désactivation utilisateur:', error);
+                return false;
+            }
+        }
+
+        async function createTaskForUser(taskData) {
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .insert([{
+                        project_id: taskData.projectId,
+                        operation_id: taskData.operationId,
+                        operator_id: taskData.operatorId,
+                        operator_name: taskData.operatorName,
+                        started_at: taskData.startedAt,
+                        ended_at: taskData.endedAt,
+                        quantity: taskData.quantity,
+                        project_name: taskData.projectName,
+                        operation_name: taskData.operationName
+                    }]);
+
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Erreur création tâche:', error);
+                return false;
+            }
+        }
+
+        async function completeTask(taskId, endTime, quantity) {
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({ 
+                        ended_at: endTime,
+                        quantity: quantity
+                    })
+                    .eq('id', taskId);
+
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Erreur completion tâche:', error);
+                return false;
+            }
+        }
+
+        async function reassignTask(taskId, newOperator) {
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({ operator_name: newOperator })
+                    .eq('id', taskId);
+
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Erreur réassignation tâche:', error);
+                return false;
+            }
+        }
+
+        // Interface pour les actions d'anomalies
+        function showActionForm(anomalyIndex, actionType) {
+            hideAllActionForms();
+            
+            const formId = `action-form-${anomalyIndex}`;
+            const form = document.getElementById(formId);
+            const anomaly = widgetData[4].anomalies[anomalyIndex];
+            
+            let formContent = '';
+            
+            if (anomaly.category === 'inactive_operator') {
+                if (actionType === 'force_task') {
+                    formContent = `
+                        <h6><i class="fas fa-plus me-2"></i>Forcer le démarrage d'une tâche</h6>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Projet</label>
+                                <select id="project-select-${anomalyIndex}" onchange="loadOperationsForProject(${anomalyIndex})">
+                                    <option value="">Sélectionner un projet...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Opération</label>
+                                <select id="operation-select-${anomalyIndex}">
+                                    <option value="">Sélectionner d'abord un projet</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Heure de début</label>
+                                <input type="datetime-local" id="start-time-${anomalyIndex}">
+                            </div>
+                            <div class="form-group">
+                                <label>Heure de fin</label>
+                                <input type="datetime-local" id="end-time-${anomalyIndex}">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantité</label>
+                                <input type="number" id="quantity-${anomalyIndex}" min="1">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-submit" onclick="submitForceTask(${anomalyIndex})">
+                                <i class="fas fa-check me-1"></i>Créer la tâche
+                            </button>
+                            <button class="btn-cancel" onclick="hideActionForm(${anomalyIndex})">
+                                Annuler
+                            </button>
+                        </div>
+                        <div class="success-message" id="success-${anomalyIndex}"></div>
+                        <div class="error-message-form" id="error-${anomalyIndex}"></div>
+                    `;
+                }
+            } else if (anomaly.category === 'delayed_task') {
+                if (actionType === 'complete') {
+                    formContent = `
+                        <h6><i class="fas fa-check me-2"></i>Marquer comme terminée</h6>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Heure de fin</label>
+                                <input type="datetime-local" id="completion-time-${anomalyIndex}">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantité traitée</label>
+                                <input type="number" id="completion-quantity-${anomalyIndex}" min="0">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-submit" onclick="submitCompleteTask(${anomalyIndex})">
+                                <i class="fas fa-check me-1"></i>Terminer
+                            </button>
+                            <button class="btn-cancel" onclick="hideActionForm(${anomalyIndex})">
+                                Annuler
+                            </button>
+                        </div>
+                        <div class="success-message" id="success-${anomalyIndex}"></div>
+                        <div class="error-message-form" id="error-${anomalyIndex}"></div>
+                    `;
+                } else if (actionType === 'reassign') {
+                    formContent = `
+                        <h6><i class="fas fa-exchange-alt me-2"></i>Réassigner la tâche</h6>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nouvel opérateur</label>
+                                <select id="operator-select-${anomalyIndex}">
+                                    <option value="">Sélectionner un opérateur...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-submit" onclick="submitReassignTask(${anomalyIndex})">
+                                <i class="fas fa-exchange-alt me-1"></i>Réassigner
+                            </button>
+                            <button class="btn-cancel" onclick="hideActionForm(${anomalyIndex})">
+                                Annuler
+                            </button>
+                        </div>
+                        <div class="success-message" id="success-${anomalyIndex}"></div>
+                        <div class="error-message-form" id="error-${anomalyIndex}"></div>
+                    `;
+                }
+            }
+            
+            form.innerHTML = formContent;
+            form.classList.add('show');
+            
+            // Initialiser les données selon le type de formulaire
+            if (actionType === 'force_task') {
+                initializeProjectSelect(anomalyIndex);
+            } else if (actionType === 'reassign') {
+                initializeOperatorSelect(anomalyIndex);
+            }
+        }
+
+        async function initializeProjectSelect(anomalyIndex) {
+            const projects = await loadActiveProjects();
+            const select = document.getElementById(`project-select-${anomalyIndex}`);
+            
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function initializeOperatorSelect(anomalyIndex) {
+            const users = await loadActiveUsers();
+            const select = document.getElementById(`operator-select-${anomalyIndex}`);
+            
+            users.forEach(user => {
+                const option = document.createElement('option');
+                const userName = user.first_name && user.last_name 
+                    ? `${user.first_name} ${user.last_name}` 
+                    : user.name || 'Utilisateur inconnu';
+                option.value = userName;
+                option.textContent = userName;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadOperationsForProject(anomalyIndex) {
+            const projectSelect = document.getElementById(`project-select-${anomalyIndex}`);
+            const operationSelect = document.getElementById(`operation-select-${anomalyIndex}`);
+            const projectId = projectSelect.value;
+            
+            operationSelect.innerHTML = '<option value="">Chargement...</option>';
+            
+            if (!projectId) {
+                operationSelect.innerHTML = '<option value="">Sélectionner d\'abord un projet</option>';
+                return;
+            }
+            
+            const operations = await loadProjectOperations(projectId);
+            operationSelect.innerHTML = '<option value="">Sélectionner une opération...</option>';
+            
+            operations.forEach(operation => {
+                const option = document.createElement('option');
+                option.value = operation.id;
+                option.textContent = operation.name;
+                operationSelect.appendChild(option);
+            });
+        }
+
+        function hideActionForm(anomalyIndex) {
+            const form = document.getElementById(`action-form-${anomalyIndex}`);
+            form.classList.remove('show');
+        }
+
+        function hideAllActionForms() {
+            const forms = document.querySelectorAll('.action-form');
+            forms.forEach(form => form.classList.remove('show'));
+        }
+
+        async function submitDisableUser(anomalyIndex) {
+            const anomaly = widgetData[4].anomalies[anomalyIndex];
+            const success = await disableUser(anomaly.id);
+            
+            if (success) {
+                // Mise à jour optimiste immédiate
+                updateLocalAnomalies(anomalyIndex, 'remove');
+                refreshWidgetDisplay();
+                
+                showSuccess(anomalyIndex, 'Utilisateur désactivé avec succès');
+                
+                setTimeout(() => {
+                    hideActionForm(anomalyIndex);
+                }, 1000);
+                
+                // Vérification différée pour garantir la cohérence
+                setTimeout(async () => {
+                    await loadWidget4_Anomalies();
+                }, 1500);
+                
+                // Fallback en cas d'échec de synchronisation
+                setTimeout(async () => {
+                    if (isAnomalyStillPresent(anomaly)) {
+                        await loadWidget4_Anomalies();
+                    }
+                }, 5000);
+            } else {
+                showError(anomalyIndex, 'Erreur lors de la désactivation');
+            }
+        }
+
+        async function submitForceTask(anomalyIndex) {
+            const anomaly = widgetData[4].anomalies[anomalyIndex];
+            const projectId = document.getElementById(`project-select-${anomalyIndex}`).value;
+            const operationId = document.getElementById(`operation-select-${anomalyIndex}`).value;
+            const startTime = document.getElementById(`start-time-${anomalyIndex}`).value;
+            const endTime = document.getElementById(`end-time-${anomalyIndex}`).value;
+            const quantity = document.getElementById(`quantity-${anomalyIndex}`).value;
+            
+            if (!projectId || !operationId || !startTime || !endTime || !quantity) {
+                showError(anomalyIndex, 'Tous les champs sont obligatoires');
+                return;
+            }
+            
+            const projectSelect = document.getElementById(`project-select-${anomalyIndex}`);
+            const operationSelect = document.getElementById(`operation-select-${anomalyIndex}`);
+            
+            const taskData = {
+                projectId: parseInt(projectId),
+                operationId: parseInt(operationId),
+                operatorId: anomaly.id,
+                operatorName: anomaly.description,
+                startedAt: startTime,
+                endedAt: endTime,
+                quantity: parseInt(quantity),
+                projectName: projectSelect.options[projectSelect.selectedIndex].text,
+                operationName: operationSelect.options[operationSelect.selectedIndex].text
+            };
+            
+            const success = await createTaskForUser(taskData);
+            
+            if (success) {
+                // Mise à jour optimiste immédiate
+                updateLocalAnomalies(anomalyIndex, 'remove');
+                refreshWidgetDisplay();
+                
+                showSuccess(anomalyIndex, 'Tâche créée avec succès');
+                
+                setTimeout(() => {
+                    hideActionForm(anomalyIndex);
+                }, 1000);
+                
+                // Vérification différée pour garantir la cohérence
+                setTimeout(async () => {
+                    await loadWidget4_Anomalies();
+                }, 1500);
+                
+                // Fallback en cas d'échec de synchronisation
+                setTimeout(async () => {
+                    if (isAnomalyStillPresent(anomaly)) {
+                        await loadWidget4_Anomalies();
+                    }
+                }, 5000);
+            } else {
+                showError(anomalyIndex, 'Erreur lors de la création de la tâche');
+            }
+        }
+
+        async function submitCompleteTask(anomalyIndex) {
+            const anomaly = widgetData[4].anomalies[anomalyIndex];
+            const endTime = document.getElementById(`completion-time-${anomalyIndex}`).value;
+            const quantity = document.getElementById(`completion-quantity-${anomalyIndex}`).value;
+            
+            if (!endTime || !quantity) {
+                showError(anomalyIndex, 'Tous les champs sont obligatoires');
+                return;
+            }
+            
+            const success = await completeTask(anomaly.id, endTime, parseInt(quantity));
+            
+            if (success) {
+                // Mise à jour optimiste immédiate
+                updateLocalAnomalies(anomalyIndex, 'remove');
+                refreshWidgetDisplay();
+                
+                showSuccess(anomalyIndex, 'Tâche marquée comme terminée');
+                
+                setTimeout(() => {
+                    hideActionForm(anomalyIndex);
+                }, 1000);
+                
+                // Vérification différée pour garantir la cohérence
+                setTimeout(async () => {
+                    await loadWidget4_Anomalies();
+                }, 1500);
+                
+                // Fallback en cas d'échec de synchronisation
+                setTimeout(async () => {
+                    if (isAnomalyStillPresent(anomaly)) {
+                        await loadWidget4_Anomalies();
+                    }
+                }, 5000);
+            } else {
+                showError(anomalyIndex, 'Erreur lors de la finalisation');
+            }
+        }
+
+        async function submitReassignTask(anomalyIndex) {
+            const anomaly = widgetData[4].anomalies[anomalyIndex];
+            const newOperator = document.getElementById(`operator-select-${anomalyIndex}`).value;
+            
+            if (!newOperator) {
+                showError(anomalyIndex, 'Veuillez sélectionner un opérateur');
+                return;
+            }
+            
+            const success = await reassignTask(anomaly.id, newOperator);
+            
+            if (success) {
+                // Mise à jour optimiste immédiate
+                updateLocalAnomalies(anomalyIndex, 'remove');
+                refreshWidgetDisplay();
+                
+                showSuccess(anomalyIndex, `Tâche réassignée à ${newOperator}`);
+                
+                setTimeout(() => {
+                    hideActionForm(anomalyIndex);
+                }, 1000);
+                
+                // Vérification différée pour garantir la cohérence
+                setTimeout(async () => {
+                    await loadWidget4_Anomalies();
+                }, 1500);
+                
+                // Fallback en cas d'échec de synchronisation
+                setTimeout(async () => {
+                    if (isAnomalyStillPresent(anomaly)) {
+                        await loadWidget4_Anomalies();
+                    }
+                }, 5000);
+            } else {
+                showError(anomalyIndex, 'Erreur lors de la réassignation');
+            }
+        }
+
+        // Fonctions d'aide pour la mise à jour optimiste
+        function updateLocalAnomalies(anomalyIndex, action) {
+            if (action === 'remove') {
+                // Supprimer l'anomalie de la liste locale
+                widgetData[4].anomalies.splice(anomalyIndex, 1);
+                widgetData[4].count = widgetData[4].anomalies.length;
+            }
+        }
+
+        function refreshWidgetDisplay() {
+            // Mettre à jour l'affichage de la vignette
+            const count = widgetData[4].count;
+            document.getElementById('widget4-content').innerHTML = `
+                <div class="widget-value">${count}</div>
+                <p class="widget-summary">${count > 0 ? 'Attention requise' : 'Tout va bien'}</p>
+            `;
+            
+            // Recharger le contenu de la modal si elle est ouverte
+            const modal = document.getElementById('widgetModal');
+            if (modal.classList.contains('show')) {
+                const modalBody = document.getElementById('modalBody');
+                loadModalContent(4, modalBody);
+            }
+        }
+
+        function isAnomalyStillPresent(anomaly) {
+            // Vérifier si l'anomalie est encore présente dans les données actuelles
+            return widgetData[4].anomalies.some(a => 
+                a.id === anomaly.id && a.category === anomaly.category
+            );
+        }
+
+        function showSuccess(anomalyIndex, message) {
+            const successDiv = document.getElementById(`success-${anomalyIndex}`);
+            const errorDiv = document.getElementById(`error-${anomalyIndex}`);
+            
+            errorDiv.style.display = 'none';
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function showError(anomalyIndex, message) {
+            const successDiv = document.getElementById(`success-${anomalyIndex}`);
+            const errorDiv = document.getElementById(`error-${anomalyIndex}`);
+            
+            successDiv.style.display = 'none';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Fonctions du chatbot (code existant)
+        function toggleChatbot() {
+            const container = document.getElementById('chatbotContainer');
+            const toggle = document.getElementById('chatbotToggle');
+            
+            if (container.classList.contains('open')) {
+                container.classList.remove('open');
+                toggle.innerHTML = '<i class="fas fa-comment"></i>';
+            } else {
+                container.classList.add('open');
+                toggle.innerHTML = '<i class="fas fa-times"></i>';
+            }
+        }
+
+        function askAboutWidget(widgetNumber) {
+            const widgetNames = {
+                1: 'projets actifs',
+                2: 'opérations du jour',
+                3: 'revenus',
+                4: 'anomalies'
+            };
+            
+            const question = `Explique-moi l'indicateur "${widgetNames[widgetNumber]}"`;
+            sendMessage(question);
+            
+            if (!document.getElementById('chatbotContainer').classList.contains('open')) {
+                toggleChatbot();
+            }
+        }
+
+        function sendUserMessage() {
+            const input = document.getElementById('chatbotInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                sendMessage(message);
+                input.value = '';
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendUserMessage();
+            }
+        }
+
+        function sendMessage(message) {
+            const messagesContainer = document.getElementById('chatbotMessages');
+            
+            // Ajouter le message de l'utilisateur
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.innerHTML = `<div class="message-bubble">${message}</div>`;
+            messagesContainer.appendChild(userMessage);
+            
+            // Ajouter la réponse du bot
+            setTimeout(() => {
+                const botResponse = getBotResponse(message);
+                const botMessage = document.createElement('div');
+                botMessage.className = 'message bot';
+                botMessage.innerHTML = `<div class="message-bubble">${botResponse}</div>`;
+                messagesContainer.appendChild(botMessage);
+                
+                // Scroll automatique
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 500);
+            
+            // Scroll automatique
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function getBotResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            conversationHistory.push(message);
+            
+            // Gestion escalade (3 échecs)
+            if (lowerMessage.includes('non') && askSatisfactionNext) {
+                failedAnswersCount++;
+                if (failedAnswersCount >= 3) {
+                    return "Je vais transférer votre demande à l'équipe technique. En attendant, vous pouvez consulter la console admin pour la gestion des projets.";
+                }
+                askSatisfactionNext = false;
+                return "Pouvez-vous reformuler votre question plus précisément ?";
+            }
+            
+            // Reset compteur si satisfaction
+            if (lowerMessage.includes('oui') || lowerMessage.includes('merci')) {
+                failedAnswersCount = 0;
+                askSatisfactionNext = false;
+                return "Parfait ! Autre question ?";
+            }
+            
+            let response = '';
+            
+            // Navigation et actions
+            if (lowerMessage.includes('clôturer') || lowerMessage.includes('fermer') || lowerMessage.includes('désactiver')) {
+                response = "Pour clôturer ou désactiver un projet : Retour Console Admin > Projets > Sélectionner le projet > Modifier le statut. Un projet clôturé n'apparaît plus dans les actifs même s'il n'est pas à 100%.";
+            }
+            // Prix et budgets  
+            else if (lowerMessage.includes('prix') || lowerMessage.includes('tarif') || lowerMessage.includes('budget')) {
+                response = "Pour modifier les prix : Console Admin > Projets > Détails du projet > Budget prestation. Le CA est calculé automatiquement : (Budget/Nb sièges total) × Sièges emballés.";
+            }
+            // Anomalies et résolution
+            else if (lowerMessage.includes('anomalie') || lowerMessage.includes('résoudre') || lowerMessage.includes('problème')) {
+                response = getAnomaliesResponse(lowerMessage);
+            }
+            // Projets actifs
+            else if (lowerMessage.includes('projets actifs')) {
+                response = getProjectsResponse();
+            }
+            // Opérations
+            else if (lowerMessage.includes('opération') || lowerMessage.includes('étape')) {
+                response = getOperationResponse(lowerMessage);
+            }
+            // Revenus
+            else if (lowerMessage.includes('revenus') || lowerMessage.includes('marge') || lowerMessage.includes('ca')) {
+                response = getRevenueResponse();
+            }
+            // Défaut
+            else {
+                response = "Je peux vous aider avec : les indicateurs du dashboard, la gestion des projets, la résolution d'anomalies, ou la navigation. Que souhaitez-vous savoir ?";
+            }
+            
+            askSatisfactionNext = true;
+            return response + "<br><br><small><em>Cette réponse vous convient-elle ?</em></small>";
+        }
+
+        function getProjectsResponse() {
+            const data = widgetData[1];
+            const count = data?.count || 0;
+            const avgProgress = data?.avgProgress || 0;
+            
+            return `L'indicateur "Projets Actifs" montre ${count} projets en cours de production avec une progression moyenne de ${avgProgress}%. La progression est calculée en fonction du nombre de sièges emballés par rapport au total à produire.`;
+        }
+
+        function getOperationResponse(lowerMessage) {
+            const data = widgetData[2];
+            const total = data?.count || 0;
+            const inProgress = data?.tasksInProgress || 0;
+            const projects = data?.projectCount || 0;
+            
+            return `L'indicateur "Opérations du jour" affiche ${total} tâches de production démarrées aujourd'hui. ${inProgress} sont encore en cours, réparties sur ${projects} projet(s). Chaque tâche indique l'opérateur assigné et son statut.`;
+        }
+
+        function getRevenueResponse() {
+            const data = widgetData[3];
+            const ca = data?.totalCA || 0;
+            const depenses = data?.totalDepenses || 0;
+            const marge = data?.marge || 0;
+            
+            return `L'indicateur "Revenus" calcule la marge mensuelle : CA réalisé (${ca.toFixed(0)}€) moins les dépenses (${depenses.toFixed(0)}€) = ${marge.toFixed(0)}€ de marge. Le CA est calculé proportionnellement aux sièges livrés.`;
+        }
+
+        function getAnomaliesResponse(lowerMessage) {
+            const data = widgetData[4];
+            const count = data?.count || 0;
+            
+            return `L'indicateur "Anomalies" détecte ${count} problème(s) potentiel(s) : opérateurs sans tâche active et tâches en retard depuis plus d'une journée. Vous pouvez maintenant corriger ces anomalies directement depuis la modal en cliquant sur les boutons d'action de chaque ligne.`;
+        }
+
+        // Modal functions
+        function openWidgetModal(widgetNumber) {
+            const modal = new bootstrap.Modal(document.getElementById('widgetModal'));
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            const configs = {
+                1: {
+                    title: 'Projets Actifs',
+                    icon: 'fa-project-diagram',
+                    iconClass: 'primary'
+                },
+                2: {
+                    title: 'Opérations du jour',
+                    icon: 'fa-clock',
+                    iconClass: 'info'
+                },
+                3: {
+                    title: 'Revenus',
+                    icon: 'fa-euro-sign',
+                    iconClass: 'success'
+                },
+                4: {
+                    title: 'Anomalies',
+                    icon: 'fa-exclamation-triangle',
+                    iconClass: 'warning'
+                }
+            };
+
+            const config = configs[widgetNumber];
+            modalTitle.innerHTML = `
+                <div class="widget-icon ${config.iconClass}">
+                    <i class="fas ${config.icon}"></i>
+                </div>
+                ${config.title}
+            `;
+
+            loadModalContent(widgetNumber, modalBody);
+            modal.show();
+        }
+
+        function loadModalContent(widgetNumber, modalBody) {
+            const data = widgetData[widgetNumber];
+            
+            if (!data) {
+                modalBody.innerHTML = '<p class="text-muted">Aucune donnée disponible</p>';
+                return;
+            }
+
+            let html = '';
+
+            switch (widgetNumber) {
+                case 1:
+                    html = '<h6 class="mb-3">Détail par projet :</h6>';
+                    data.projects.forEach(project => {
+                        html += `
+                            <div class="detail-item">
+                                <div class="detail-label">${project.name}</div>
+                                <div class="detail-value">${project.progress}%</div>
+                            </div>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: ${project.progress}%"></div>
+                            </div>
+                            <small class="text-muted">${project.packedSeats}/${project.totalSeats} sièges</small>
+                            <hr>
+                        `;
+                    });
+                    break;
+
+                case 2:
+                    html = '<h6 class="mb-3">Opérations par projet :</h6>';
+                    Object.entries(data.projectGroups).forEach(([projectName, tasks]) => {
+                        html += `
+                            <div class="project-section">
+                                <div class="project-header">
+                                    <h6 class="project-name">${projectName}</h6>
+                                    <span class="project-count">${tasks.length} tâche(s)</span>
+                                </div>
+                        `;
+                        
+                        tasks.forEach(task => {
+                            const statusClass = task.status === 'en cours' ? 'status-en-cours' : 'status-terminee';
+                            const statusIcon = task.status === 'en cours' ? 'fa-play' : 'fa-check';
+                            const startTime = new Date(task.startedAt).toLocaleTimeString('fr-FR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                            
+                            html += `
+                                <div class="task-item">
+                                    <div class="task-header">
+                                        <h6 class="task-title">${task.operationName}</h6>
+                                        <span class="task-status ${statusClass}">
+                                            <i class="fas ${statusIcon} me-1"></i>
+                                            ${task.status}
+                                        </span>
+                                    </div>
+                                    <div class="task-details">
+                                        <i class="fas fa-user me-1"></i> ${task.operatorName} 
+                                        <span class="ms-3">
+                                            <i class="fas fa-clock me-1"></i> ${startTime}
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    });
+                    break;
+
+                case 3:
+                    html = `
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-center">
+                                <h6 class="text-success">${data.totalCA.toFixed(0)}€</h6>
+                                <small class="text-muted">CA Réalisé</small>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <h6 class="text-danger">${data.totalDepenses.toFixed(0)}€</h6>
+                                <small class="text-muted">Dépenses</small>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <h6 class="text-primary">${data.marge.toFixed(0)}€</h6>
+                                <small class="text-muted">Marge</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="mb-3">Détail par projet :</h6>
+                    `;
+                    data.projects.forEach(project => {
+                        html += `
+                            <div class="detail-item">
+                                <div class="detail-label">${project.name}</div>
+                                <div class="detail-value">${project.marge.toFixed(0)}€</div>
+                            </div>
+                            <small class="text-muted">CA: ${project.ca.toFixed(0)}€ | Dépenses: ${project.depenses.toFixed(0)}€</small>
+                            <hr>
+                        `;
+                    });
+                    break;
+
+                case 4:
+                    if (data.anomalies.length === 0) {
+                        html = '<div class="text-center text-success"><i class="fas fa-check-circle fa-3x mb-3"></i><p>Aucune anomalie détectée</p></div>';
+                    } else {
+                        html = '<h6 class="mb-3">Détail des anomalies :</h6>';
+                        data.anomalies.forEach((anomaly, index) => {
+                            html += `
+                                <div class="anomaly-item">
+                                    <div class="anomaly-header">
+                                        <div>
+                                            <span class="anomaly-type">${anomaly.type}</span>
+                                            <div class="mt-2">
+                                                <strong>${anomaly.description}</strong>
+                                            </div>
+                                        </div>
+                                        <div class="anomaly-actions">
+                            `;
+                            
+                            if (anomaly.category === 'inactive_operator') {
+                                html += `
+                                    <button class="btn-action btn-fix" onclick="showActionForm(${index}, 'force_task')" title="Forcer une tâche">
+                                        <i class="fas fa-plus me-1"></i>Tâche
+                                    </button>
+                                    <button class="btn-action btn-disable" onclick="submitDisableUser(${index})" title="Désactiver">
+                                        <i class="fas fa-user-times me-1"></i>Désactiver
+                                    </button>
+                                `;
+                            } else if (anomaly.category === 'delayed_task') {
+                                html += `
+                                    <button class="btn-action btn-fix" onclick="showActionForm(${index}, 'complete')" title="Marquer terminée">
+                                        <i class="fas fa-check me-1"></i>Terminer
+                                    </button>
+                                    <button class="btn-action btn-reassign" onclick="showActionForm(${index}, 'reassign')" title="Réassigner">
+                                        <i class="fas fa-exchange-alt me-1"></i>Réassigner
+                                    </button>
+                                `;
+                            }
+                            
+                            html += `
+                                        </div>
+                                    </div>
+                                    <div class="action-form" id="action-form-${index}">
+                                        <!-- Formulaire dynamique -->
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    break;
+            }
+
+            modalBody.innerHTML = html;
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-1"></i> ${message}`;
+        }
+
+        function showError(message) {
+            document.querySelectorAll('[id^="widget"][id$="-content"]').forEach(widget => {
+                widget.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${message}
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
