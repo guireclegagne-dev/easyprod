@@ -498,14 +498,13 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="config.js"></script>
-    <script>
-        // Configuration Supabase
-        
+<script>
+    // Configuration Supabase
     const SUPABASE_URL = CONFIG.SUPABASE.URL;
     const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
-    </script>
-        // Variables globales
-let supabase = null;
+    
+    // Variables globales
+    let supabase = null;
 let projectId = null;
 let projectData = null;
 let progressChart = null;
@@ -1629,4 +1628,5 @@ async function submitCorrection(operationId, operationName) {
                 </div>
 
                 <div class="breakdown-item">
+
 
