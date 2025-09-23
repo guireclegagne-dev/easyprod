@@ -22,6 +22,7 @@
     .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; transition: all 0.2s ease; }
     .btn-white { background:#fff; color:#1f2937; }
     .btn-white:hover { background:#f3f4f6; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:10px; }
     .grid .label { opacity:.95; }
     .qty-box { display:flex; align-items:center; gap:10px; margin-top:8px; }
@@ -83,9 +84,11 @@
     }
   </style>
   <script src="config.js"></script>
-<script>
-const SUPABASE_URL = CONFIG.SUPABASE.URL;
-const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+  <script>
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Fonctions utilitaires
     const LS = {
       op: 'prod_selected_operator',
       pr: 'prod_selected_project',
@@ -99,9 +102,209 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
     function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
     function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
-  </script>
 
-<title>Finalisation — Écran 6</title>
+    // Variables globales
+    let supabaseClient = null;
+
+    // Chargement dynamique de Supabase
+    function loadAndInitSupabase() {
+      return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+          console.log('Supabase script loaded');
+          
+          setTimeout(() => {
+            try {
+              if (window.supabase && typeof window.supabase.createClient === 'function') {
+                console.log('Creating Supabase client...');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client created successfully');
+                resolve(client);
+              } else {
+                console.error('window.supabase.createClient not available');
+                reject(new Error('Supabase createClient not found'));
+              }
+            } catch(error) {
+              console.error('Error creating Supabase client:', error);
+              reject(error);
+            }
+          }, 300);
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Supabase script:', error);
+          reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+
+    // Fonction principale
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('DOM loaded, initializing finalization...');
+      
+      // Vérifications des étapes précédentes
+      const op = getLS(LS.op), pr = getLS(LS.pr), opn = getLS(LS.opn);
+      if(!op) {
+        location.href='ecran-1-seulement.html';
+        return;
+      }
+      if(!pr) {
+        location.href='ecran-2-seulement.html';
+        return;
+      }
+      if(!opn) {
+        location.href='ecran-3-seulement.html';
+        return;
+      }
+      
+      // Récupération des données de timing
+      const start = getLS(LS.start), end = getLS(LS.end), exec = getLS(LS.exec), pause = getLS(LS.pause);
+
+      // Affichage des informations
+      document.getElementById('fOp').textContent = op.name;
+      document.getElementById('fProj').textContent = pr.name;
+      document.getElementById('fOpn').textContent = opn.name;
+      document.getElementById('startT').textContent = start ? new Date(start).toLocaleTimeString() : '—';
+      document.getElementById('endT').textContent = end ? new Date(end).toLocaleTimeString() : '—';
+      document.getElementById('dur').textContent = exec ? fmtTime(exec) : '—';
+
+      // Configuration des contrôles de quantité
+      const input = document.getElementById('quantityInput');
+      const minus = document.getElementById('minusBtn');
+      const plus = document.getElementById('plusBtn');
+      const btn = document.getElementById('validateBtn');
+      
+      const refresh = () => { 
+        const v = parseInt(input.value || '0', 10); 
+        btn.disabled = !(v >= 0);
+      };
+      
+      input.addEventListener('input', refresh);
+      minus.addEventListener('click', () => {
+        const v = Math.max(0, parseInt(input.value || '0', 10) - 1);
+        input.value = v;
+        refresh();
+      });
+      plus.addEventListener('click', () => {
+        const v = parseInt(input.value || '0', 10) + 1;
+        input.value = v;
+        refresh();
+      });
+
+      // Initialiser Supabase en arrière-plan (non bloquant)
+      try {
+        supabaseClient = await loadAndInitSupabase();
+        console.log('Supabase ready for task finalization');
+      } catch(error) {
+        console.log('Running in offline mode:', error.message);
+      }
+
+      // Event listener du bouton de validation
+      btn.addEventListener('click', finalize);
+      
+      // Initialiser l'état du bouton
+      refresh();
+    });
+
+    async function finalize() {
+      const btn = document.getElementById('validateBtn');
+      const msg = document.getElementById('msg');
+      const input = document.getElementById('quantityInput');
+      
+      const quantity = parseInt(input.value || '0', 10);
+      
+      btn.disabled = true;
+      msg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalisation...';
+      
+      // Récupérer toutes les données
+      const taskId = getLS(LS.taskId);
+      const op = getLS(LS.op);
+      const pr = getLS(LS.pr);
+      const opn = getLS(LS.opn);
+      const start = getLS(LS.start);
+      const end = getLS(LS.end);
+      const exec = getLS(LS.exec);
+      const pause = getLS(LS.pause);
+      
+      try {
+        if (supabaseClient && taskId) {
+          // Mise à jour en base de données
+          const { error } = await supabaseClient
+            .from('tasks')
+            .update({
+              quantity: quantity,
+              status: 'completed',
+              ended_at: end || new Date().toISOString(),
+              execution_ms: exec || 0,
+              pause_ms: pause || 0
+            })
+            .eq('id', taskId);
+          
+          if (error) throw error;
+          console.log('Task finalized in database with quantity:', quantity);
+          msg.innerHTML = 'Tâche finalisée avec succès !';
+          
+        } else {
+          console.log('Offline mode - task finalized locally with quantity:', quantity);
+          msg.innerHTML = 'Tâche finalisée (mode offline)';
+        }
+        
+        // Stocker la quantité localement
+        setLS('final_quantity', quantity);
+        
+        // Animation de succès
+        setTimeout(showSuccess, 1000);
+        
+      } catch(e) {
+        console.error('Error finalizing task:', e);
+        msg.innerHTML = 'Erreur: ' + (e.message || 'Impossible de finaliser');
+        btn.disabled = false;
+        
+        // Permettre la finalisation en mode offline après 3 secondes
+        setTimeout(() => {
+          msg.innerHTML = 'Mode offline - Cliquez pour finaliser localement';
+          btn.disabled = false;
+          btn.onclick = () => {
+            setLS('final_quantity', quantity);
+            showSuccess();
+          };
+        }, 3000);
+      }
+    }
+
+    function showSuccess() {
+      // Nettoyer certaines données pour permettre un nouveau cycle
+      const keysToKeep = [LS.op]; // Garder l'opérateur sélectionné
+      const keysToRemove = [LS.pr, LS.opn, LS.start, LS.end, LS.exec, LS.pause, LS.taskId];
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Afficher l'écran de succès
+      const overlay = document.getElementById('successOverlay');
+      const title = document.getElementById('successTitle');
+      const text = document.getElementById('successText');
+      
+      const quantity = getLS('final_quantity') || 0;
+      const op = getLS(LS.op);
+      
+      title.textContent = 'Mission Accomplie !';
+      text.innerHTML = `Bravo ${op?.name || ''} !<br>Quantité produite : ${quantity}<br>Votre travail de qualité fait la différence.`;
+      
+      overlay.classList.add('show');
+      
+      // Redirection automatique après 5 secondes
+      setTimeout(() => {
+        localStorage.removeItem('final_quantity');
+        window.location.href = 'ecran-1-seulement.html';
+      }, 5000);
+    }
+  </script>
+  <title>Finalisation — Écran 6</title>
 </head>
 <body>
   <section class="screen" style="background: linear-gradient(135deg,#834d9b 0%,#d04ed6 100%);">
@@ -137,134 +340,5 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
       <p class="success-text" id="successText">Bravo ! Votre travail de qualité<br>fait la différence.</p>
     </div>
   </div>
-
-<script>
-let supabase = null;
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
-  if(!op) return location.href='ecran-1-seulement.html';
-  if(!pr) return location.href='ecran-2-seulement.html';
-  if(!opn) return location.href='ecran-3-seulement.html';
-  
-  const start = getLS(LS.start), end = getLS(LS.end), exec = getLS(LS.exec), pause = getLS(LS.pause);
-
-  document.getElementById('fOp').textContent = op.name;
-  document.getElementById('fProj').textContent = pr.name;
-  document.getElementById('fOpn').textContent = opn.name;
-  document.getElementById('startT').textContent = start ? new Date(start).toLocaleTimeString() : '—';
-  document.getElementById('endT').textContent   = end ? new Date(end).toLocaleTimeString() : '—';
-  document.getElementById('dur').textContent    = exec ? fmtTime(exec) : '—';
-
-  const input = document.getElementById('quantityInput');
-  const minus = document.getElementById('minusBtn');
-  const plus  = document.getElementById('plusBtn');
-  const btn   = document.getElementById('validateBtn');
-  
-  const refresh = ()=>{ 
-    const v=parseInt(input.value||'0',10); 
-    btn.disabled = !(Number.isFinite(v) && v>0); 
-  };
-  
-  input.oninput=refresh; 
-  minus.onclick=()=>{ input.value=Math.max(0,(parseInt(input.value||'0',10)-1)); refresh(); };
-  plus.onclick =()=>{ input.value=(parseInt(input.value||'0',10)+1); refresh(); };
-  refresh();
-
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  btn.onclick = finalizeTask;
-});
-
-async function finalizeTask() {
-  const btn = document.getElementById('validateBtn');
-  const qty = parseInt(document.getElementById('quantityInput').value||'0',10); 
-  if(!qty||qty<=0) return;
-  
-  btn.disabled = true;
-  document.getElementById('msg').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalisation...';
-  
-  const taskId = getLS(LS.taskId);
-  
-  try {
-    if (taskId) {
-      // Mettre à jour la tâche existante avec la quantité et status final
-      const { error } = await supabase
-        .from('tasks')
-        .update({ 
-          quantity: qty,
-          status: 'completed'
-        })
-        .eq('id', taskId);
-        
-      if (error) throw error;
-      
-      document.getElementById('msg').textContent = 'Tâche finalisée avec succès !';
-      
-      // Nettoyer l'ID stocké
-      localStorage.removeItem(LS.taskId);
-      
-    } else {
-      // Mode offline - créer une insertion complète
-      const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
-      const start = getLS(LS.start), end = getLS(LS.end), exec = getLS(LS.exec), pause = getLS(LS.pause);
-      
-      const payload = {
-        operator_id: String(op.id),
-        operator_name: op.name,
-        project_id: pr.id,
-        project_name: pr.name,
-        operation_id: opn.id,
-        operation_name: opn.name,
-        started_at: start || null,
-        ended_at: end || new Date().toISOString(),
-        execution_ms: exec || null,
-        pause_ms: pause || 0,
-        quantity: qty,
-        status: 'completed'
-      };
-      
-      const { error } = await supabase.from('tasks').insert(payload);
-      if (error) throw error;
-      
-      document.getElementById('msg').textContent = 'Tâche enregistrée (mode offline)';
-    }
-    
-    // Afficher message de fin et rediriger
-    showSuccessAndRedirect();
-    
-  } catch(e) {
-    console.error('Erreur finalisation:', e);
-    document.getElementById('msg').textContent = 'Erreur: ' + (e.message || 'Impossible de finaliser');
-    btn.disabled = false;
-  }
-}
-
-function showSuccessAndRedirect() {
-  const messages = [
-    { title: 'Mission Accomplie !', text: 'Bravo ! Votre travail de qualité<br>fait la différence.' },
-    { title: 'Parfait !', text: 'Merci pour votre professionnalisme.<br>Continuez comme ça !' },
-    { title: 'Super Boulot !', text: 'Votre efficacité est remarquable.<br>Merci pour votre engagement.' },
-    { title: 'Formidable !', text: 'Chaque tâche accomplie nous rapproche<br>de nos objectifs. Merci !' },
-    { title: 'Excellent !', text: 'Votre dévouement est exemplaire.<br>Félicitations !' },
-    { title: 'Fantastique !', text: 'Votre savoir-faire est exceptionnel.<br>Bravo pour cette réalisation !' }
-  ];
-  
-  const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-  
-  document.getElementById('successTitle').textContent = randomMessage.title;
-  document.getElementById('successText').innerHTML = randomMessage.text;
-  
-  // Afficher l'overlay de succès
-  document.getElementById('successOverlay').classList.add('show');
-  
-  // Nettoyer les données locales
-  Object.values(LS).forEach(key => localStorage.removeItem(key));
-  
-  // Rediriger vers l'écran 1 après 5 secondes
-  setTimeout(() => {
-    window.location.href = 'ecran-1-seulement.html';
-  }, 5000);
-}
-</script>
 </body>
 </html>
