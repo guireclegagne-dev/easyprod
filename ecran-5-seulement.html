@@ -22,19 +22,20 @@
     .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; }
     .btn-white { background:#fff; color:#1f2937; }
     .btn-outline { background:transparent; color:white; border:2px solid rgba(255,255,255,.5); }
+    .timer { text-align: center; margin: 20px 0; }
     .timer .time { font-size:3rem; font-weight:700; line-height:1.2; font-variant-numeric:tabular-nums; letter-spacing:1px; }
     .timer .since { opacity:.9; margin-top:6px; font-size:.95em; }
     .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
-    .hidden { display:none !important; }
+    .bg-active { background: linear-gradient(135deg,#27ae60 0%,#229954 100%) !important; }
+    .bg-paused { background: linear-gradient(135deg,#e67e22 0%,#d68910 100%) !important; }
     @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } .timer .time { font-size:2.4rem; } }
-    .bg-active { background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%) !important; }
-    .bg-paused { background: linear-gradient(135deg,#ffc107 0%,#ff8f00 100%) !important; }
-    .center { text-align:center; }
   </style>
- <script src="config.js"></script>
-<script>
-const SUPABASE_URL = CONFIG.SUPABASE.URL;
-const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+  <script src="config.js"></script>
+  <script>
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Fonctions utilitaires
     const LS = {
       op: 'prod_selected_operator',
       pr: 'prod_selected_project',
@@ -48,9 +49,240 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
     function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
     function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
-  </script>
 
-<title>Tâche en cours — Écran 5</title>
+    // Variables globales
+    let startTime = null, timerInt = null, pauseStart = null, totalPause = 0;
+    let supabaseClient = null;
+    let taskId = null;
+    let pauseUpdateInterval = null;
+
+    // Chargement dynamique de Supabase
+    function loadAndInitSupabase() {
+      return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+          console.log('Supabase script loaded');
+          
+          setTimeout(() => {
+            try {
+              if (window.supabase && typeof window.supabase.createClient === 'function') {
+                console.log('Creating Supabase client...');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client created successfully');
+                resolve(client);
+              } else {
+                console.error('window.supabase.createClient not available');
+                reject(new Error('Supabase createClient not found'));
+              }
+            } catch(error) {
+              console.error('Error creating Supabase client:', error);
+              reject(error);
+            }
+          }, 300);
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Supabase script:', error);
+          reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+
+    function setBg(state) {
+      const el = document.getElementById('scr5');
+      el.classList.remove('bg-active','bg-paused');
+      if (state === 'running') el.classList.add('bg-active');
+      if (state === 'paused')  el.classList.add('bg-paused');
+    }
+
+    // Fonction principale
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('DOM loaded, initializing timer...');
+      
+      // Vérifications des étapes précédentes
+      const op = getLS(LS.op), pr = getLS(LS.pr), opn = getLS(LS.opn);
+      if(!op) {
+        location.href='ecran-1-seulement.html';
+        return;
+      }
+      if(!pr) {
+        location.href='ecran-2-seulement.html';
+        return;
+      }
+      if(!opn) {
+        location.href='ecran-3-seulement.html';
+        return;
+      }
+      
+      // Affichage des informations
+      document.getElementById('opName').textContent = op.name;
+      document.getElementById('projName').textContent = pr.name;
+      document.getElementById('opnName').textContent = opn.name;
+
+      // Récupérer l'ID de la tâche
+      taskId = getLS(LS.taskId);
+      
+      // Vérifier qu'il y a un temps de démarrage
+      const storedStart = getLS(LS.start);
+      if (storedStart) {
+        startTime = new Date(storedStart);
+        document.getElementById('since').textContent = 'Démarré à ' + startTime.toLocaleTimeString();
+        
+        console.log('Timer starting with start time:', startTime);
+        run(); // DÉMARRER LE CHRONOMÈTRE
+        
+      } else {
+        console.error('No start time found, redirecting to screen 4');
+        location.href = 'ecran-4-seulement.html';
+        return;
+      }
+
+      // Initialiser Supabase en arrière-plan (non bloquant)
+      try {
+        supabaseClient = await loadAndInitSupabase();
+        console.log('Supabase ready for task updates');
+      } catch(error) {
+        console.log('Running in offline mode:', error.message);
+      }
+
+      // Event listeners des boutons
+      document.getElementById('pauseBtn').onclick = pauseTask;
+      document.getElementById('resumeBtn').onclick = resumeTask;
+      document.getElementById('stopBtn').onclick = stopTask;
+      document.getElementById('to6').onclick = () => { window.location.href='ecran-6-seulement.html'; };
+    });
+
+    function run() {
+      console.log('Starting timer...');
+      setBg('running');
+      document.getElementById('pauseBtn').disabled = false;
+      document.getElementById('resumeBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = false;
+      timerInt = setInterval(update, 250);
+    }
+
+    function update() {
+      const now = new Date();
+      const eff = now - startTime - (pauseStart ? (now - pauseStart) : 0) - totalPause;
+      document.getElementById('elapsed').textContent = fmtTime(eff);
+    }
+
+    async function pauseTask() {
+      if (!startTime || pauseStart) return;
+      
+      pauseStart = new Date();
+      clearInterval(timerInt); 
+      timerInt = null;
+      setBg('paused');
+      
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resumeBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = false;
+      document.getElementById('since').textContent = 'En pause depuis ' + pauseStart.toLocaleTimeString();
+      
+      // Démarrer la mise à jour de pause_ms toutes les minutes
+      if (supabaseClient && taskId) {
+        pauseUpdateInterval = setInterval(updatePauseInDB, 60000); // 60 secondes
+      }
+      
+      document.getElementById('msg').textContent = 'Tâche en pause';
+    }
+
+    async function resumeTask() {
+      if (!startTime || !pauseStart) return;
+      
+      totalPause += (new Date() - pauseStart);
+      pauseStart = null;
+      
+      // Arrêter les mises à jour de pause
+      if (pauseUpdateInterval) {
+        clearInterval(pauseUpdateInterval);
+        pauseUpdateInterval = null;
+      }
+      
+      run();
+      document.getElementById('since').textContent = 'Repris à ' + new Date().toLocaleTimeString();
+      document.getElementById('msg').textContent = 'Tâche reprise';
+    }
+
+    async function updatePauseInDB() {
+      if (!supabaseClient || !taskId || !pauseStart) return;
+      
+      try {
+        const currentPauseTime = totalPause + (new Date() - pauseStart);
+        
+        const { error } = await supabaseClient
+          .from('tasks')
+          .update({ pause_ms: currentPauseTime })
+          .eq('id', taskId);
+        
+        if (error) throw error;
+        
+        console.log('Pause mise à jour:', fmtTime(currentPauseTime));
+        
+      } catch(e) {
+        console.error('Erreur mise à jour pause:', e);
+      }
+    }
+
+    async function stopTask() {
+      const end = new Date();
+      if (pauseStart) { 
+        totalPause += (end - pauseStart); 
+        pauseStart = null; 
+      }
+      
+      // Arrêter tous les timers
+      clearInterval(timerInt); 
+      timerInt = null;
+      if (pauseUpdateInterval) {
+        clearInterval(pauseUpdateInterval);
+        pauseUpdateInterval = null;
+      }
+      
+      setBg(''); 
+      document.getElementById('since').textContent = 'Terminé à ' + end.toLocaleTimeString();
+      
+      const exec = startTime ? (end - startTime - totalPause) : 0;
+      
+      // Stocker les données finales
+      setLS(LS.end, end.toISOString());
+      setLS(LS.exec, exec);
+      setLS(LS.pause, totalPause);
+      
+      document.getElementById('msg').textContent = 'Tâche terminée - ' + fmtTime(exec);
+      
+      // Mise à jour en base si possible
+      if (supabaseClient && taskId) {
+        try {
+          const { error } = await supabaseClient
+            .from('tasks')
+            .update({ 
+              ended_at: end.toISOString(),
+              status: 'completed',
+              execution_ms: exec,
+              pause_ms: totalPause
+            })
+            .eq('id', taskId);
+          
+          if (error) throw error;
+          console.log('Task completed in database');
+        } catch(e) {
+          console.error('Error updating task completion:', e);
+        }
+      }
+      
+      setTimeout(() => {
+        window.location.href = 'ecran-6-seulement.html';
+      }, 2000);
+    }
+  </script>
+  <title>Tâche en cours — Écran 5</title>
 </head>
 <body>
   <section class="screen" id="scr5" style="background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);">
@@ -72,177 +304,5 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
       <div class="statusbar" id="msg"></div>
     </div>
   </section>
-
-<script>
-let startTime=null, timerInt=null, pauseStart=null, totalPause=0;
-let supabase = null;
-let taskId = null;
-let pauseUpdateInterval = null;
-
-function setBg(state){
-  const el = document.getElementById('scr5');
-  el.classList.remove('bg-active','bg-paused');
-  if (state==='running') el.classList.add('bg-active');
-  if (state==='paused')  el.classList.add('bg-paused');
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
-  if(!op) return location.href='ecran-1-seulement.html';
-  if(!pr) return location.href='ecran-2-seulement.html';
-  if(!opn) return location.href='ecran-3-seulement.html';
-  
-  document.getElementById('opName').textContent=op.name;
-  document.getElementById('projName').textContent=pr.name;
-  document.getElementById('opnName').textContent=opn.name;
-
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  taskId = getLS(LS.taskId);
-  
-  const storedStart = getLS(LS.start);
-  if (storedStart) {
-    startTime = new Date(storedStart);
-    document.getElementById('since').textContent = 'Démarré à ' + startTime.toLocaleTimeString();
-    run();
-  } else {
-    // Si pas de start time, rediriger vers écran 4
-    location.href = 'ecran-4-seulement.html';
-    return;
-  }
-
-  document.getElementById('pauseBtn').onclick = pauseTask;
-  document.getElementById('resumeBtn').onclick = resumeTask;
-  document.getElementById('stopBtn').onclick = stopTask;
-  document.getElementById('to6').onclick = ()=>{ window.location.href='ecran-6-seulement.html'; };
-});
-
-function run(){
-  setBg('running');
-  document.getElementById('pauseBtn').disabled = false;
-  document.getElementById('resumeBtn').disabled = true;
-  document.getElementById('stopBtn').disabled = false;
-  timerInt = setInterval(update, 250);
-}
-
-function update(){
-  const now = new Date();
-  const eff = now - startTime - (pauseStart ? (now - pauseStart) : 0) - totalPause;
-  document.getElementById('elapsed').textContent = fmtTime(eff);
-}
-
-async function pauseTask(){
-  if (!startTime || pauseStart) return;
-  
-  pauseStart = new Date();
-  clearInterval(timerInt); 
-  timerInt = null;
-  setBg('paused');
-  
-  document.getElementById('pauseBtn').disabled = true;
-  document.getElementById('resumeBtn').disabled = false;
-  document.getElementById('stopBtn').disabled = false;
-  document.getElementById('since').textContent = 'En pause depuis ' + pauseStart.toLocaleTimeString();
-  
-  // Démarrer la mise à jour de pause_ms toutes les minutes
-  pauseUpdateInterval = setInterval(updatePauseInDB, 60000); // 60 secondes
-  
-  document.getElementById('msg').textContent = 'Tâche en pause';
-}
-
-async function resumeTask(){
-  if (!startTime || !pauseStart) return;
-  
-  totalPause += (new Date() - pauseStart);
-  pauseStart = null;
-  
-  // Arrêter les mises à jour de pause
-  if (pauseUpdateInterval) {
-    clearInterval(pauseUpdateInterval);
-    pauseUpdateInterval = null;
-  }
-  
-  run();
-  document.getElementById('since').textContent = 'Repris à ' + new Date().toLocaleTimeString();
-  document.getElementById('msg').textContent = 'Tâche reprise';
-}
-
-async function updatePauseInDB() {
-  if (!taskId || !pauseStart) return;
-  
-  try {
-    const currentPauseTime = totalPause + (new Date() - pauseStart);
-    
-    const { error } = await supabase
-      .from('tasks')
-      .update({ pause_ms: currentPauseTime })
-      .eq('id', taskId);
-    
-    if (error) throw error;
-    
-    console.log('Pause mise à jour:', fmtTime(currentPauseTime));
-    
-  } catch(e) {
-    console.error('Erreur mise à jour pause:', e);
-  }
-}
-
-async function stopTask(){
-  const end = new Date();
-  if (pauseStart) { 
-    totalPause += (end - pauseStart); 
-    pauseStart = null; 
-  }
-  
-  // Arrêter tous les timers
-  clearInterval(timerInt); 
-  timerInt = null;
-  if (pauseUpdateInterval) {
-    clearInterval(pauseUpdateInterval);
-    pauseUpdateInterval = null;
-  }
-  
-  setBg(''); 
-  document.getElementById('since').textContent = 'Terminé à ' + end.toLocaleTimeString();
-  
-  const exec = startTime ? (end - startTime - totalPause) : 0;
-  setLS(LS.end, end.toISOString());
-  setLS(LS.exec, exec);
-  setLS(LS.pause, totalPause);
-  
-  // Mettre à jour la tâche existante avec les temps finaux
-  await updateTaskWithFinalTimes(end, exec, totalPause);
-  
-  document.getElementById('pauseBtn').disabled = true;
-  document.getElementById('resumeBtn').disabled = true;
-  document.getElementById('stopBtn').disabled = true;
-  document.getElementById('to6').disabled = false;
-}
-
-async function updateTaskWithFinalTimes(endTime, execMs, pauseMs) {
-  if (!taskId) {
-    document.getElementById('msg').textContent = 'Mode offline - données sauvegardées localement';
-    return;
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        ended_at: endTime.toISOString(),
-        execution_ms: execMs,
-        pause_ms: pauseMs
-      })
-      .eq('id', taskId);
-    
-    if (error) throw error;
-    
-    document.getElementById('msg').textContent = 'Tâche mise à jour';
-    
-  } catch(e) {
-    console.error('Erreur mise à jour finale:', e);
-    document.getElementById('msg').textContent = 'Erreur réseau - données sauvegardées localement';
-  }
-}
-</script>
 </body>
 </html>
