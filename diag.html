@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Supabase</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .diagnostic-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .check-item {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #dee2e6;
+        }
+        
+        .check-item.success {
+            background-color: #d1e7dd;
+            border-left-color: #198754;
+        }
+        
+        .check-item.error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .check-item.warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-container">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-stethoscope text-primary"></i>
+            Diagnostic Supabase
+        </h1>
+        
+        <div id="diagnosticResults">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Analyse en cours...</span>
+                </div>
+                <p class="mt-3">Analyse de votre configuration Supabase...</p>
+            </div>
+        </div>
+        
+        <div id="solutionSection" style="display: none;">
+            <hr class="my-4">
+            <h3><i class="fas fa-wrench text-success"></i> Solutions recommandées</h3>
+            <div id="solutionContent"></div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <button class="btn btn-primary" onclick="runDiagnostic()">
+                <i class="fas fa-redo"></i> Relancer le diagnostic
+            </button>
+            <a href="index.html" class="btn btn-secondary ms-2">
+                <i class="fas fa-arrow-left"></i> Retour à la connexion
+            </a>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        let supabase = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            runDiagnostic();
+        });
+
+        async function runDiagnostic() {
+            const resultsDiv = document.getElementById('diagnosticResults');
+            const solutionSection = document.getElementById('solutionSection');
+            const solutionContent = document.getElementById('solutionContent');
+            
+            resultsDiv.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analyse en cours...</span>
+                    </div>
+                    <p class="mt-3">Analyse de votre configuration Supabase...</p>
+                </div>
+            `;
+            
+            solutionSection.style.display = 'none';
+            
+            let results = [];
+            let solutions = [];
+
+            try {
+                // 1. Test de configuration
+                if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                    results.push({
+                        type: 'error',
+                        title: 'Configuration manquante',
+                        message: 'Les paramètres Supabase ne sont pas configurés dans config.js'
+                    });
+                    solutions.push({
+                        title: 'Vérifier config.js',
+                        content: 'Assurez-vous que CONFIG.SUPABASE.URL et CONFIG.SUPABASE.ANON_KEY sont définis.'
+                    });
+                } else {
+                    results.push({
+                        type: 'success',
+                        title: 'Configuration trouvée',
+                        message: `URL: ${SUPABASE_URL.substring(0, 30)}...`
+                    });
+                }
+
+                // 2. Test de connexion Supabase
+                try {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    results.push({
+                        type: 'success',
+                        title: 'Client Supabase initialisé',
+                        message: 'La bibliothèque Supabase est chargée et le client est créé'
+                    });
+                } catch (error) {
+                    results.push({
+                        type: 'error',
+                        title: 'Erreur d\'initialisation Supabase',
+                        message: error.message
+                    });
+                }
+
+                // 3. Test de la table users
+                try {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        if (error.message.includes('relation "users" does not exist')) {
+                            results.push({
+                                type: 'error',
+                                title: 'Table "users" manquante',
+                                message: 'La table users n\'existe pas dans votre base Supabase'
+                            });
+                            solutions.push({
+                                title: 'Créer la table users',
+                                content: `Exécutez ce SQL dans l'éditeur SQL de Supabase :
+
+CREATE TABLE public.users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- Index pour la recherche par email
+CREATE INDEX idx_users_email ON public.users(email);
+
+-- Politique RLS (Row Level Security)
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Permettre la lecture pour les utilisateurs authentifiés
+CREATE POLICY "Users can read own data" ON public.users
+    FOR SELECT USING (true);`
+                            });
+                        } else {
+                            results.push({
+                                type: 'error',
+                                title: 'Erreur accès table users',
+                                message: error.message
+                            });
+                        }
+                    } else {
+                        results.push({
+                            type: 'success',
+                            title: 'Table "users" accessible',
+                            message: 'La table users existe et est accessible'
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        type: 'error',
+                        title: 'Test table users échoué',
+                        message: error.message
+                    });
+                }
+
+                // 4. Test de la table user_sessions
+                try {
+                    const { data, error } = await supabase
+                        .from('user_sessions')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        if (error.message.includes('relation "user_sessions" does not exist')) {
+                            results.push({
+                                type: 'error',
+                                title: 'Table "user_sessions" manquante',
+                                message: 'La table user_sessions n\'existe pas dans votre base Supabase'
+                            });
+                            solutions.push({
+                                title: 'Créer la table user_sessions',
+                                content: `Exécutez ce SQL dans l'éditeur SQL de Supabase :
+
+CREATE TABLE public.user_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index pour la recherche par token
+CREATE INDEX idx_user_sessions_token ON public.user_sessions(token);
+CREATE INDEX idx_user_sessions_expires ON public.user_sessions(expires_at);
+
+-- Politique RLS
+ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Permettre l'accès pour les sessions valides
+CREATE POLICY "Users can manage own sessions" ON public.user_sessions
+    FOR ALL USING (true);`
+                            });
+                        } else {
+                            results.push({
+                                type: 'error',
+                                title: 'Erreur accès table user_sessions',
+                                message: error.message
+                            });
+                        }
+                    } else {
+                        results.push({
+                            type: 'success',
+                            title: 'Table "user_sessions" accessible',
+                            message: 'La table user_sessions existe et est accessible'
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        type: 'error',
+                        title: 'Test table user_sessions échoué',
+                        message: error.message
+                    });
+                }
+
+                // 5. Vérifier s'il y a des utilisateurs
+                try {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('id, email')
+                        .limit(5);
+                    
+                    if (!error && data) {
+                        if (data.length === 0) {
+                            results.push({
+                                type: 'warning',
+                                title: 'Aucun utilisateur trouvé',
+                                message: 'La table users est vide. Vous devez créer au moins un utilisateur pour vous connecter.'
+                            });
+                            solutions.push({
+                                title: 'Créer un utilisateur de test',
+                                content: `Pour créer un utilisateur de test, exécutez ce SQL :
+
+INSERT INTO public.users (email, password_hash, first_name, last_name, is_admin, is_active)
+VALUES (
+    'admin@test.com',
+    'dGVzdDEyMw==', -- 'test123' encodé en base64 (temporaire)
+    'Admin',
+    'Test',
+    true,
+    true
+);
+
+IDENTIFIANTS DE TEST :
+Email: admin@test.com
+Mot de passe: test123`
+                            });
+                        } else {
+                            results.push({
+                                type: 'success',
+                                title: `${data.length} utilisateur(s) trouvé(s)`,
+                                message: `Utilisateurs: ${data.map(u => u.email).join(', ')}`
+                            });
+                        }
+                    }
+                } catch (error) {
+                    // Ignoré si la table n'existe pas déjà
+                }
+
+            } catch (error) {
+                results.push({
+                    type: 'error',
+                    title: 'Erreur générale',
+                    message: error.message
+                });
+            }
+
+            // Afficher les résultats
+            displayResults(results);
+            
+            if (solutions.length > 0) {
+                displaySolutions(solutions);
+                solutionSection.style.display = 'block';
+            }
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('diagnosticResults');
+            let html = '<h3><i class="fas fa-clipboard-list text-info"></i> Résultats du diagnostic</h3>';
+            
+            results.forEach(result => {
+                const icon = result.type === 'success' ? 'check-circle' : 
+                           result.type === 'error' ? 'exclamation-circle' : 'exclamation-triangle';
+                
+                html += `
+                    <div class="check-item ${result.type}">
+                        <h5><i class="fas fa-${icon}"></i> ${result.title}</h5>
+                        <p class="mb-0">${result.message}</p>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function displaySolutions(solutions) {
+            const solutionContent = document.getElementById('solutionContent');
+            let html = '';
+            
+            solutions.forEach((solution, index) => {
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tools text-primary"></i>
+                                ${index + 1}. ${solution.title}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-block">${solution.content}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            solutionContent.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
