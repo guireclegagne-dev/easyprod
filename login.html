@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Système de Production</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .form-floating input {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .form-floating input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            transform: none;
+        }
+        
+        .alert {
+            border-radius: 12px;
+            border: none;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading.active {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .loading i {
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .forgot-password {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        
+        .forgot-password a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1><i class="fas fa-cogs me-2"></i>Production</h1>
+            <p>Connectez-vous pour accéder au système</p>
+        </div>
+        
+        <div id="alertContainer"></div>
+        
+        <form id="loginForm">
+            <div class="form-floating">
+                <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                <label for="email"><i class="fas fa-envelope me-2"></i>Adresse email</label>
+            </div>
+            
+            <div class="form-floating">
+                <input type="password" class="form-control" id="password" placeholder="Mot de passe" required>
+                <label for="password"><i class="fas fa-lock me-2"></i>Mot de passe</label>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="rememberMe">
+                <label class="form-check-label" for="rememberMe">
+                    Se souvenir de moi
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-login">
+                <span class="loading" id="loadingSpinner">
+                    <i class="fas fa-spinner"></i>
+                    Connexion en cours...
+                </span>
+                <span id="loginText">Se connecter</span>
+            </button>
+        </form>
+        
+        <div class="forgot-password">
+            <a href="#" onclick="showForgotPassword()">Mot de passe oublié ?</a>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // Configuration Supabase
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        
+        let supabase = null;
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            // Vérifier si déjà connecté
+            checkExistingSession();
+            
+            // Gérer la soumission du formulaire
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        });
+        
+        // Vérifier une session existante
+        async function checkExistingSession() {
+            const session = getStoredSession();
+            if (session && session.expires_at > Date.now()) {
+                // Vérifier la validité en base
+                try {
+                    const { data, error } = await supabase
+                        .from('user_sessions')
+                        .select(`
+                            id,
+                            expires_at,
+                            users (
+                                id,
+                                email,
+                                first_name,
+                                last_name,
+                                is_admin,
+                                is_active
+                            )
+                        `)
+                        .eq('token', session.token)
+                        .single();
+                    
+                    if (!error && data && data.users.is_active) {
+                        redirectToApp(data.users);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Erreur vérification session:', e);
+                }
+            }
+            
+            // Nettoyer les sessions invalides
+            clearStoredSession();
+        }
+        
+        // Gérer la connexion
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            if (!email || !password) {
+                showAlert('Veuillez remplir tous les champs', 'danger');
+                return;
+            }
+            
+            setLoading(true);
+            hideAlert();
+            
+            try {
+                // Authentification
+                const user = await authenticateUser(email, password);
+                
+                if (!user) {
+                    showAlert('Email ou mot de passe incorrect', 'danger');
+                    return;
+                }
+                
+                if (!user.is_active) {
+                    showAlert('Compte désactivé. Contactez un administrateur.', 'warning');
+                    return;
+                }
+                
+                // Créer une session
+                const session = await createUserSession(user, rememberMe);
+                
+                // Sauvegarder localement
+                storeSession(session, rememberMe);
+                
+                // Mettre à jour la dernière connexion
+                await updateLastLogin(user.id);
+                
+                showAlert('Connexion réussie ! Redirection...', 'success');
+                
+                setTimeout(() => {
+                    redirectToApp(user);
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Erreur connexion:', error);
+                showAlert('Erreur de connexion. Veuillez réessayer.', 'danger');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Authentifier l'utilisateur
+        async function authenticateUser(email, password) {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, email, password_hash, first_name, last_name, is_admin, is_active')
+                .eq('email', email.toLowerCase())
+                .single();
+            
+            if (error || !data) {
+                return null;
+            }
+            
+            // Vérifier le mot de passe
+            const isValid = await verifyPassword(password, data.password_hash);
+            
+            return isValid ? data : null;
+        }
+        
+        // Vérifier le mot de passe (vous devrez implémenter le hachage côté serveur)
+        async function verifyPassword(password, hash) {
+            // TEMPORAIRE: comparaison simple pour le développement
+            // EN PRODUCTION: utilisez bcrypt ou similar
+            return password === hash || hash === hashPassword(password);
+        }
+        
+        // Hacher un mot de passe (implémentation simple)
+        function hashPassword(password) {
+            // TEMPORAIRE: en production, utilisez bcrypt côté serveur
+            return btoa(password + 'salt_secret_key');
+        }
+        
+        // Créer une session utilisateur
+        async function createUserSession(user, longTerm = false) {
+            const token = generateSessionToken();
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + (longTerm ? 24 * 7 : 8)); // 7 jours ou 8h
+            
+            const sessionData = {
+                user_id: user.id,
+                token: token,
+                expires_at: expiresAt.toISOString(),
+                ip_address: await getUserIP(),
+                user_agent: navigator.userAgent
+            };
+            
+            const { data, error } = await supabase
+                .from('user_sessions')
+                .insert(sessionData)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            return {
+                ...data,
+                user: user
+            };
+        }
+        
+        // Générer un token de session
+        function generateSessionToken() {
+            return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        }
+        
+        // Obtenir l'IP de l'utilisateur
+        async function getUserIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        // Sauvegarder la session
+        function storeSession(session, persistent = false) {
+            const sessionData = {
+                token: session.token,
+                expires_at: new Date(session.expires_at).getTime(),
+                user: session.user
+            };
+            
+            if (persistent) {
+                localStorage.setItem('user_session', JSON.stringify(sessionData));
+            } else {
+                sessionStorage.setItem('user_session', JSON.stringify(sessionData));
+            }
+        }
+        
+        // Récupérer la session stockée
+        function getStoredSession() {
+            const sessionData = localStorage.getItem('user_session') || 
+                                sessionStorage.getItem('user_session');
+            return sessionData ? JSON.parse(sessionData) : null;
+        }
+        
+        // Nettoyer la session stockée
+        function clearStoredSession() {
+            localStorage.removeItem('user_session');
+            sessionStorage.removeItem('user_session');
+        }
+        
+        // Mettre à jour la dernière connexion
+        async function updateLastLogin(userId) {
+            await supabase
+                .from('users')
+                .update({ last_login: new Date().toISOString() })
+                .eq('id', userId);
+        }
+        
+        // Rediriger vers l'application
+        function redirectToApp(user) {
+            if (user.is_admin) {
+                window.location.href = 'user-management.html';
+            } else {
+                window.location.href = 'interface-utilisateur.html';
+            }
+        }
+        
+        // Gestion de l'interface
+        function setLoading(loading) {
+            const form = document.getElementById('loginForm');
+            const spinner = document.getElementById('loadingSpinner');
+            const text = document.getElementById('loginText');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            if (loading) {
+                spinner.classList.add('active');
+                text.style.display = 'none';
+                submitBtn.disabled = true;
+            } else {
+                spinner.classList.remove('active');
+                text.style.display = 'inline';
+                submitBtn.disabled = false;
+            }
+        }
+        
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+        
+        function hideAlert() {
+            document.getElementById('alertContainer').innerHTML = '';
+        }
+        
+        function showForgotPassword() {
+            showAlert('Contactez un administrateur pour réinitialiser votre mot de passe', 'info');
+        }
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+</body>
+</html>
