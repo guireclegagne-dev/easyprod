@@ -64,14 +64,14 @@
             border-radius: 12px;
             padding: 0.75rem 1.5rem;
             font-weight: 600;
+            color: white;
             width: 100%;
-            margin-top: 1rem;
             transition: all 0.3s ease;
         }
         
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
         
         .btn-login:disabled {
@@ -79,59 +79,50 @@
             transform: none;
         }
         
-        .alert {
-            border-radius: 12px;
-            border: none;
-            font-size: 0.9rem;
-        }
-        
         .loading {
             display: none;
         }
         
         .loading.active {
-            display: inline-flex;
-            align-items: center;
+            display: inline;
         }
         
-        .loading i {
-            animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loading.active ~ #loginText {
+            display: none !important;
         }
         
         .forgot-password {
             text-align: center;
-            margin-top: 1rem;
+            margin-top: 1.5rem;
         }
         
         .forgot-password a {
-            color: #667eea;
+            color: #666;
             text-decoration: none;
             font-size: 0.9rem;
+            transition: color 0.3s ease;
         }
         
         .forgot-password a:hover {
-            text-decoration: underline;
+            color: #667eea;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1><i class="fas fa-cogs me-2"></i>Production</h1>
+            <h1>
+                <i class="fas fa-cogs"></i>
+                Production
+            </h1>
             <p>Connectez-vous pour accéder au système</p>
         </div>
-        
+
         <div id="alertContainer"></div>
-        
+
         <form id="loginForm">
             <div class="form-floating">
-                <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                <input type="email" class="form-control" id="email" placeholder="Email" required>
                 <label for="email"><i class="fas fa-envelope me-2"></i>Adresse email</label>
             </div>
             
@@ -149,7 +140,7 @@
             
             <button type="submit" class="btn btn-primary btn-login">
                 <span class="loading" id="loadingSpinner">
-                    <i class="fas fa-spinner"></i>
+                    <i class="fas fa-spinner fa-spin"></i>
                     Connexion en cours...
                 </span>
                 <span id="loginText">Se connecter</span>
@@ -163,13 +154,12 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        // Configuration Supabase
-        const SUPABASE_URL = CONFIG.SUPABASE.URL;
-        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        // Configuration directe
+        const SUPABASE_URL = 'https://pekndazxlkxdhfgrdtyq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBla25kYXp4bGt4ZGhmZ3JkdHlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODIzMzcsImV4cCI6MjA3MjQ1ODMzN30.McX9eQpaQ3SJfSTErz1dP0ixJl8tyK__aqyFrStnLvo';
         
         let supabase = null;
         
-        // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
@@ -184,7 +174,6 @@
         async function checkExistingSession() {
             const session = getStoredSession();
             if (session && session.expires_at > Date.now()) {
-                // Vérifier la validité en base
                 try {
                     const { data, error } = await supabase
                         .from('user_sessions')
@@ -203,7 +192,7 @@
                         .eq('token', session.token)
                         .single();
                     
-                    if (!error && data && data.users.is_active) {
+                    if (!error && data && data.users && data.users.is_active) {
                         redirectToApp(data.users);
                         return;
                     }
@@ -287,84 +276,64 @@
             return isValid ? data : null;
         }
         
-        // Vérifier le mot de passe (vous devrez implémenter le hachage côté serveur)
+        // Vérifier le mot de passe (logique corrigée)
         async function verifyPassword(password, hash) {
-            // TEMPORAIRE: comparaison simple pour le développement
-            // EN PRODUCTION: utilisez bcrypt ou similar
-            return password === hash || hash === hashPassword(password);
-        }
-        
-        // Hacher un mot de passe (implémentation simple)
-        function hashPassword(password) {
-            // TEMPORAIRE: en production, utilisez bcrypt côté serveur
-            return btoa(password + 'salt_secret_key');
+            // Comparaison directe
+            if (password === hash) {
+                return true;
+            }
+            
+            // Hash avec salt (comme dans le debug)
+            const hashedPassword = btoa(password + 'salt_secret_key');
+            if (hashedPassword === hash) {
+                return true;
+            }
+            
+            return false;
         }
         
         // Créer une session utilisateur
         async function createUserSession(user, longTerm = false) {
             const token = generateSessionToken();
             const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + (longTerm ? 24 * 7 : 8)); // 7 jours ou 8h
-            
-            const sessionData = {
-                user_id: user.id,
-                token: token,
-                expires_at: expiresAt.toISOString(),
-                ip_address: await getUserIP(),
-                user_agent: navigator.userAgent
-            };
+            expiresAt.setHours(expiresAt.getHours() + (longTerm ? 720 : 24)); // 30 jours ou 1 jour
             
             const { data, error } = await supabase
                 .from('user_sessions')
-                .insert(sessionData)
+                .insert({
+                    user_id: user.id,
+                    token: token,
+                    expires_at: expiresAt.toISOString()
+                })
                 .select()
                 .single();
             
-            if (error) throw error;
+            if (error) {
+                throw new Error('Erreur création session: ' + error.message);
+            }
             
             return {
-                ...data,
+                token: token,
+                user_id: user.id,
+                expires_at: expiresAt.getTime(),
                 user: user
             };
         }
         
         // Générer un token de session
         function generateSessionToken() {
-            return Array.from(crypto.getRandomValues(new Uint8Array(32)))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-        }
-        
-        // Obtenir l'IP de l'utilisateur
-        async function getUserIP() {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                return data.ip;
-            } catch (e) {
-                return null;
-            }
+            return 'session_' + Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
         }
         
         // Sauvegarder la session
         function storeSession(session, persistent = false) {
-            const sessionData = {
-                token: session.token,
-                expires_at: new Date(session.expires_at).getTime(),
-                user: session.user
-            };
-            
-            if (persistent) {
-                localStorage.setItem('user_session', JSON.stringify(sessionData));
-            } else {
-                sessionStorage.setItem('user_session', JSON.stringify(sessionData));
-            }
+            const storage = persistent ? localStorage : sessionStorage;
+            storage.setItem('user_session', JSON.stringify(session));
         }
         
         // Récupérer la session stockée
         function getStoredSession() {
-            const sessionData = localStorage.getItem('user_session') || 
-                                sessionStorage.getItem('user_session');
+            const sessionData = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
             return sessionData ? JSON.parse(sessionData) : null;
         }
         
@@ -430,6 +399,5 @@
     </script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="config.js"></script>
 </body>
 </html>
