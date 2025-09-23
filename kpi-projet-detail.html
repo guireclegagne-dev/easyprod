@@ -505,39 +505,100 @@
     const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
     </script>
         // Variables globales
-        let supabase = null;
-        let projectId = null;
-        let projectData = null;
-        let progressChart = null;
-        let costsChart = null;
+let supabase = null;
+let projectId = null;
+let projectData = null;
+let progressChart = null;
+let costsChart = null;
 
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 Initialisation KPI Projet Détail');
+// Chargement dynamique de Supabase
+function loadAndInitSupabase() {
+    return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+            console.log('Supabase script loaded');
             
-            // Récupérer l'ID du projet depuis l'URL
-            const urlParams = new URLSearchParams(window.location.search);
-            projectId = urlParams.get('id');
-            
-            if (!projectId) {
-                showToast('ID de projet manquant', 'error');
-                setTimeout(() => goBack(), 2000);
-                return;
-            }
-            
-            try {
-                // Initialiser Supabase
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                // Charger les données du projet
-                await loadProjectData();
-                
-            } catch (error) {
-                console.error('Erreur initialisation:', error);
-                showToast('Erreur de connexion - Utilisation des données de test', 'warning');
-            }
-        });
+            setTimeout(() => {
+                try {
+                    if (window.supabase && typeof window.supabase.createClient === 'function') {
+                        console.log('Creating Supabase client...');
+                        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                        console.log('Supabase client created successfully');
+                        resolve(client);
+                    } else {
+                        console.error('window.supabase.createClient not available');
+                        reject(new Error('Supabase createClient not found'));
+                    }
+                } catch(error) {
+                    console.error('Error creating Supabase client:', error);
+                    reject(error);
+                }
+            }, 300);
+        };
+        
+        script.onerror = (error) => {
+            console.error('Failed to load Supabase script:', error);
+            reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+    });
+}
 
+// Initialisation modifiée
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🚀 Initialisation KPI Projet Détail');
+    
+    // Récupérer l'ID du projet depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    projectId = urlParams.get('id');
+    
+    if (!projectId) {
+        showToast('ID de projet manquant', 'error');
+        setTimeout(() => goBack(), 2000);
+        return;
+    }
+    
+    try {
+        // Initialiser Supabase avec chargement dynamique
+        supabase = await loadAndInitSupabase();
+        console.log('Supabase initialisé, chargement des données...');
+        
+        // Charger les données du projet
+        await loadProjectData();
+        
+    } catch (error) {
+        console.error('Erreur initialisation:', error);
+        showToast('Erreur de connexion - Utilisation des données de test', 'warning');
+        
+        // Mode fallback avec données de test
+        projectData = createTestProjectData();
+        renderProjectDetail();
+    }
+});
+
+// Fonction de test pour les données de fallback
+function createTestProjectData() {
+    return {
+        id: projectId || 1,
+        name: 'Projet Test',
+        client: 'Client Test',
+        created_at: new Date().toISOString(),
+        totalSeats: 100,
+        emballedSeats: 75,
+        prixVentePrestation: 10000,
+        coutOperateurs: 3000,
+        achatsExternes: 2000,
+        operations: [
+            { name: 'Démontage', status: 'completed', duration: 120 },
+            { name: 'Nettoyage', status: 'in_progress', duration: 90 },
+            { name: 'Assemblage', status: 'pending', duration: 0 }
+        ]
+    };
+}
         // Chargement des données du projet
         async function loadProjectData() {
             try {
@@ -1568,3 +1629,4 @@ async function submitCorrection(operationId, operationName) {
                 </div>
 
                 <div class="breakdown-item">
+
