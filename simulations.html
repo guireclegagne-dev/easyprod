@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulations - EasyProd by Luceleanne</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin: 20px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 1200px;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .simulation-tabs {
+            padding: 0;
+            margin: 0;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .simulation-tabs .nav-link {
+            border: none;
+            border-radius: 0;
+            padding: 20px 30px;
+            color: var(--primary-color);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .simulation-tabs .nav-link.active {
+            background: white;
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .simulation-tabs .nav-link:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .tab-content {
+            padding: 30px;
+        }
+
+        .simulation-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .btn-primary {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            border-color: var(--success-color);
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+
+        .results-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 5px solid var(--info-color);
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .positive { color: var(--success-color); }
+        .negative { color: var(--danger-color); }
+        .neutral { color: var(--info-color); }
+
+        .operation-row {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .planning-timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid var(--secondary-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 20px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+        }
+
+        .planning-controls {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .simulation-tabs .nav-link {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="console-admin-standalone.html">
+                <i class="fas fa-calculator me-2"></i>
+                EasyProd - Simulations
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a href="console-admin-standalone.html" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Retour Console
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="page-header">
+                <h1><i class="fas fa-chart-line me-3"></i>Centre de Simulations</h1>
+                <p class="mb-0">Simulez vos chiffrages, plannings et analysez la rentabilité de vos projets</p>
+            </div>
+
+            <ul class="nav nav-tabs simulation-tabs" id="simulationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="chiffrage-tab" data-bs-toggle="tab" data-bs-target="#chiffrage" type="button" role="tab">
+                        <i class="fas fa-euro-sign me-2"></i>Simulation Chiffrage
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="planning-tab" data-bs-toggle="tab" data-bs-target="#planning" type="button" role="tab">
+                        <i class="fas fa-calendar-alt me-2"></i>Simulation Planning
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rentabilite-tab" data-bs-toggle="tab" data-bs-target="#rentabilite" type="button" role="tab">
+                        <i class="fas fa-chart-pie me-2"></i>Analyse Rentabilité
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="simulationTabContent">
+                <!-- Onglet Chiffrage -->
+                <div class="tab-pane fade show active" id="chiffrage" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-calculator me-2"></i>Paramètres du Projet</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="projectName" class="form-label">Nom du projet</label>
+                                    <input type="text" class="form-control" id="projectName" placeholder="Ex: Rénovation mobilier bureau">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="clientName" class="form-label">Client</label>
+                                    <input type="text" class="form-control" id="clientName" placeholder="Nom du client">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="totalSeats" class="form-label">Nombre de sièges</label>
+                                        <input type="number" class="form-control" id="totalSeats" value="100" min="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="hourlyRate" class="form-label">Taux horaire (€)</label>
+                                        <input type="number" class="form-control" id="hourlyRate" value="15.38" step="0.01" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-cogs me-2"></i>Opérations</h4>
+                                <div id="operationsList">
+                                    <!-- Les opérations seront générées par JavaScript -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addOperation()">
+                                    <i class="fas fa-plus me-2"></i>Ajouter une opération
+                                </button>
+                            </div>
+
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-shopping-cart me-2"></i>Achats Externes</h4>
+                                <div id="purchasesList">
+                                    <div class="row mb-2">
+                                        <div class="col-md-8">
+                                            <input type="text" class="form-control" placeholder="Description de l'achat">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" class="form-control" placeholder="Montant (€)" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addPurchase()">
+                                    <i class="fas fa-plus me-2"></i>Ajouter un achat
+                                </button>
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-lg w-100" onclick="calculateChiffrage()">
+                                <i class="fas fa-calculator me-2"></i>Calculer le Chiffrage
+                            </button>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-chart-bar me-2"></i>Résultats du Chiffrage</h4>
+                                <div id="chiffrageResults">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                        <p>Remplissez les paramètres et cliquez sur "Calculer" pour voir les résultats</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Planning -->
+                <div class="tab-pane fade" id="planning" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-calendar-alt me-2"></i>Paramètres Planning</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="startDate" class="form-label">Date de début</label>
+                                    <input type="date" class="form-control" id="startDate">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="workDaysPerWeek" class="form-label">Jours de travail par semaine</label>
+                                    <select class="form-select" id="workDaysPerWeek">
+                                        <option value="5">5 jours</option>
+                                        <option value="6">6 jours</option>
+                                        <option value="7">7 jours</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="hoursPerDay" class="form-label">Heures par jour</label>
+                                    <input type="number" class="form-control" id="hoursPerDay" value="8" min="1" max="24">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="operatorsCount" class="form-label">Nombre d'opérateurs</label>
+                                    <input type="number" class="form-control" id="operatorsCount" value="2" min="1">
+                                </div>
+
+                                <button type="button" class="btn btn-success btn-lg w-100" onclick="generatePlanning()">
+                                    <i class="fas fa-calendar-plus me-2"></i>Générer le Planning
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-timeline me-2"></i>Planning Prévisionnel</h4>
+                                <div id="planningResults">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar fa-3x mb-3"></i>
+                                        <p>Configurez les paramètres et générez le planning</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Rentabilité -->
+                <div class="tab-pane fade" id="rentabilite" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-euro-sign me-2"></i>Prix de Vente</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="salePrice" class="form-label">Prix de vente total (€)</label>
+                                    <input type="number" class="form-control" id="salePrice" value="5000" step="0.01" min="0">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="marginTarget" class="form-label">Marge cible (%)</label>
+                                    <input type="number" class="form-control" id="marginTarget" value="25" min="0" max="100">
+                                </div>
+
+                                <button type="button" class="btn btn-success btn-lg w-100" onclick="analyzeRentabilite()">
+                                    <i class="fas fa-chart-pie me-2"></i>Analyser la Rentabilité
+                                </button>
+                            </div>
+
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-sliders-h me-2"></i>Simulation Scénarios</h4>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Variation du taux horaire</label>
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="varyHourlyRate(-10)">-10%</button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="varyHourlyRate(0)">Normal</button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="varyHourlyRate(10)">+10%</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Variation du nombre de sièges</label>
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="varySeatsCount(-20)">-20%</button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="varySeatsCount(0)">Normal</button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="varySeatsCount(20)">+20%</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="simulation-card">
+                                <h4><i class="fas fa-chart-pie me-2"></i>Analyse de Rentabilité</h4>
+                                <div id="rentabiliteResults">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-calculator fa-3x mb-3"></i>
+                                        <p>Lancez l'analyse pour voir les résultats</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variables globales
+        let operations = [
+            { name: 'Démontage', timePerUnit: 0.5, category: 'Désassemblage' },
+            { name: 'Nettoyage roulettes', timePerUnit: 0.3, category: 'Nettoyage' },
+            { name: 'Peinture roulettes', timePerUnit: 0.8, category: 'Rénovation' },
+            { name: 'Nettoyage structure', timePerUnit: 0.4, category: 'Nettoyage' },
+            { name: 'Peinture structure', timePerUnit: 1.2, category: 'Rénovation' },
+            { name: 'Assemblage final', timePerUnit: 0.7, category: 'Assemblage' }
+        ];
+
+        let purchases = [];
+        let currentSimulation = {};
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            renderOperations();
+            setDefaultDate();
+        });
+
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+        }
+
+        function renderOperations() {
+            const container = document.getElementById('operationsList');
+            container.innerHTML = operations.map((op, index) => `
+                <div class="operation-row">
+                    <div class="row align-items-center">
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" value="${op.name}" 
+                                   onchange="updateOperation(${index}, 'name', this.value)">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" class="form-control" value="${op.timePerUnit}" 
+                                   step="0.1" min="0" placeholder="Temps/unité (h)"
+                                   onchange="updateOperation(${index}, 'timePerUnit', parseFloat(this.value))">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" onchange="updateOperation(${index}, 'category', this.value)">
+                                <option value="Désassemblage" ${op.category === 'Désassemblage' ? 'selected' : ''}>Désassemblage</option>
+                                <option value="Nettoyage" ${op.category === 'Nettoyage' ? 'selected' : ''}>Nettoyage</option>
+                                <option value="Rénovation" ${op.category === 'Rénovation' ? 'selected' : ''}>Rénovation</option>
+                                <option value="Assemblage" ${op.category === 'Assemblage' ? 'selected' : ''}>Assemblage</option>
+                                <option value="Qualité" ${op.category === 'Qualité' ? 'selected' : ''}>Qualité</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-outline-danger btn-sm" onclick="removeOperation(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addOperation() {
+            operations.push({ name: 'Nouvelle opération', timePerUnit: 1.0, category: 'Désassemblage' });
+            renderOperations();
+        }
+
+        function removeOperation(index) {
+            operations.splice(index, 1);
+            renderOperations();
+        }
+
+        function updateOperation(index, field, value) {
+            operations[index][field] = value;
+        }
+
+        function addPurchase() {
+            const container = document.getElementById('purchasesList');
+            const newRow = document.createElement('div');
+            newRow.className = 'row mb-2';
+            newRow.innerHTML = `
+                <div class="col-md-7">
+                    <input type="text" class="form-control" placeholder="Description de l'achat">
+                </div>
+                <div class="col-md-4">
+                    <input type="number" class="form-control" placeholder="Montant (€)" step="0.01">
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-danger btn-sm" onclick="this.closest('.row').remove()">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(newRow);
+        }
+
+        function calculateChiffrage() {
+            const totalSeats = parseInt(document.getElementById('totalSeats').value) || 0;
+            const hourlyRate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+
+            // Calculer le coût des opérations
+            let totalOperationHours = 0;
+            let operationBreakdown = [];
+
+            operations.forEach(op => {
+                const hours = op.timePerUnit * totalSeats;
+                const cost = hours * hourlyRate;
+                totalOperationHours += hours;
+                
+                operationBreakdown.push({
+                    name: op.name,
+                    hours: hours,
+                    cost: cost,
+                    category: op.category
+                });
+            });
+
+            const operationsCost = totalOperationHours * hourlyRate;
+
+            // Calculer les achats externes
+            const purchaseRows = document.querySelectorAll('#purchasesList .row');
+            let externalPurchases = 0;
+            let purchaseBreakdown = [];
+
+            purchaseRows.forEach(row => {
+                const description = row.querySelector('input[type="text"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                if (description && amount > 0) {
+                    externalPurchases += amount;
+                    purchaseBreakdown.push({ description, amount });
+                }
+            });
+
+            const totalCost = operationsCost + externalPurchases;
+
+            // Stocker la simulation
+            currentSimulation = {
+                totalSeats,
+                hourlyRate,
+                operationsCost,
+                externalPurchases,
+                totalCost,
+                totalHours: totalOperationHours,
+                operationBreakdown,
+                purchaseBreakdown
+            };
+
+            renderChiffrageResults();
+        }
+
+        function renderChiffrageResults() {
+            const container = document.getElementById('chiffrageResults');
+            const sim = currentSimulation;
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${sim.totalCost.toFixed(2)}€</div>
+                            <div class="metric-label">Coût Total</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${sim.totalHours.toFixed(1)}h</div>
+                            <div class="metric-label">Temps Total</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value positive">${sim.operationsCost.toFixed(2)}€</div>
+                            <div class="metric-label">Coût Opérateurs</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value positive">${sim.externalPurchases.toFixed(2)}€</div>
+                            <div class="metric-label">Achats Externes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-card">
+                    <h5><i class="fas fa-list me-2"></i>Détail des Opérations</h5>
+                    ${sim.operationBreakdown.map(op => `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>${op.name}</strong>
+                                <small class="text-muted ms-2">(${op.category})</small>
+                            </div>
+                            <div class="text-end">
+                                <div>${op.hours.toFixed(1)}h</div>
+                                <div class="text-success"><strong>${op.cost.toFixed(2)}€</strong></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${sim.purchaseBreakdown.length > 0 ? `
+                    <div class="results-card">
+                        <h5><i class="fas fa-shopping-cart me-2"></i>Achats Externes</h5>
+                        ${sim.purchaseBreakdown.map(purchase => `
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>${purchase.description}</div>
+                                <div class="text-success"><strong>${purchase.amount.toFixed(2)}€</strong></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function generatePlanning() {
+            if (!currentSimulation.totalHours) {
+                alert('Veuillez d\'abord calculer un chiffrage');
+                return;
+            }
+
+            const startDate = new Date(document.getElementById('startDate').value);
+            const workDaysPerWeek = parseInt(document.getElementById('workDaysPerWeek').value);
+            const hoursPerDay = parseInt(document.getElementById('hoursPerDay').value);
+            const operatorsCount = parseInt(document.getElementById('operatorsCount').value);
+
+            const totalWorkHours = currentSimulation.totalHours;
+            const dailyCapacity = hoursPerDay * operatorsCount;
+            const daysNeeded = Math.ceil(totalWorkHours / dailyCapacity);
+
+            // Calcul des dates en tenant compte des jours de travail
+            let planningDays = [];
+            let currentDate = new Date(startDate);
+            let workDaysAdded = 0;
+
+            while (workDaysAdded < daysNeeded) {
+                const dayOfWeek = currentDate.getDay();
+                let isWorkDay = false;
+
+                if (workDaysPerWeek === 5) {
+                    isWorkDay = dayOfWeek >= 1 && dayOfWeek <= 5; // Lun-Ven
+                } else if (workDaysPerWeek === 6) {
+                    isWorkDay = dayOfWeek >= 1 && dayOfWeek <= 6; // Lun-Sam
+                } else {
+                    isWorkDay = true; // 7 jours
+                }
+
+                if (isWorkDay) {
+                    planningDays.push(new Date(currentDate));
+                    workDaysAdded++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Répartition des opérations par jour
+            let dailyPlanning = [];
+            let remainingHours = totalWorkHours;
+            
+            planningDays.forEach((date, index) => {
+                const hoursForDay = Math.min(remainingHours, dailyCapacity);
+                remainingHours -= hoursForDay;
+                
+                dailyPlanning.push({
+                    date: date,
+                    hours: hoursForDay,
+                    operations: assignOperationsToDay(hoursForDay, index)
+                });
+            });
+
+            renderPlanningResults(dailyPlanning, daysNeeded);
+        }
+
+        function assignOperationsToDay(availableHours, dayIndex) {
+            // Logique simplifiée pour assigner les opérations aux jours
+            const totalSeats = currentSimulation.totalSeats;
+            let assignedOps = [];
+            let usedHours = 0;
+
+            operations.forEach((op, opIndex) => {
+                if (usedHours < availableHours) {
+                    const seatsForThisOp = Math.min(
+                        Math.floor((availableHours - usedHours) / op.timePerUnit),
+                        totalSeats
+                    );
+                    
+                    if (seatsForThisOp > 0) {
+                        assignedOps.push({
+                            name: op.name,
+                            seats: seatsForThisOp,
+                            hours: seatsForThisOp * op.timePerUnit
+                        });
+                        usedHours += seatsForThisOp * op.timePerUnit;
+                    }
+                }
+            });
+
+            return assignedOps;
+        }
+
+        function renderPlanningResults(dailyPlanning, totalDays) {
+            const container = document.getElementById('planningResults');
+            
+            container.innerHTML = `
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${totalDays}</div>
+                            <div class="metric-label">Jours de Travail</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${dailyPlanning[0]?.date.toLocaleDateString('fr-FR') || 'N/A'}</div>
+                            <div class="metric-label">Date de Début</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${dailyPlanning[dailyPlanning.length - 1]?.date.toLocaleDateString('fr-FR') || 'N/A'}</div>
+                            <div class="metric-label">Date de Fin</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="planning-timeline">
+                    ${dailyPlanning.map((day, index) => `
+                        <div class="timeline-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-2">
+                                        <i class="fas fa-calendar me-2"></i>
+                                        ${day.date.toLocaleDateString('fr-FR', { 
+                                            weekday: 'long', 
+                                            year: 'numeric', 
+                                            month: 'long', 
+                                            day: 'numeric' 
+                                        })}
+                                    </h6>
+                                    <div class="mb-2">
+                                        <strong>${day.hours.toFixed(1)}h</strong> de travail planifiées
+                                    </div>
+                                    ${day.operations.length > 0 ? `
+                                        <div class="mt-2">
+                                            <small class="text-muted">Opérations :</small>
+                                            ${day.operations.map(op => `
+                                                <div class="ms-3">
+                                                    <i class="fas fa-arrow-right me-1"></i>
+                                                    ${op.name} : ${op.seats} sièges (${op.hours.toFixed(1)}h)
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary">Jour ${index + 1}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function analyzeRentabilite() {
+            if (!currentSimulation.totalCost) {
+                alert('Veuillez d\'abord calculer un chiffrage');
+                return;
+            }
+
+            const salePrice = parseFloat(document.getElementById('salePrice').value) || 0;
+            const marginTarget = parseFloat(document.getElementById('marginTarget').value) || 0;
+
+            const totalCost = currentSimulation.totalCost;
+            const profit = salePrice - totalCost;
+            const marginPercent = salePrice > 0 ? (profit / salePrice) * 100 : 0;
+            const markupPercent = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+
+            const analysis = {
+                salePrice,
+                totalCost,
+                profit,
+                marginPercent,
+                markupPercent,
+                marginTarget,
+                isTargetMet: marginPercent >= marginTarget
+            };
+
+            renderRentabiliteResults(analysis);
+        }
+
+        function renderRentabiliteResults(analysis) {
+            const container = document.getElementById('rentabiliteResults');
+            
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${analysis.salePrice.toFixed(2)}€</div>
+                            <div class="metric-label">Prix de Vente</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value neutral">${analysis.totalCost.toFixed(2)}€</div>
+                            <div class="metric-label">Coût Total</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="metric-card">
+                            <div class="metric-value ${analysis.profit >= 0 ? 'positive' : 'negative'}">${analysis.profit.toFixed(2)}€</div>
+                            <div class="metric-label">Bénéfice ${analysis.profit >= 0 ? '📈' : '📉'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value ${analysis.marginPercent >= analysis.marginTarget ? 'positive' : 'negative'}">
+                                ${analysis.marginPercent.toFixed(1)}%
+                            </div>
+                            <div class="metric-label">Marge Réelle</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value ${analysis.isTargetMet ? 'positive' : 'negative'}">
+                                ${analysis.marginTarget.toFixed(1)}%
+                            </div>
+                            <div class="metric-label">Marge Cible</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-card">
+                    <h5><i class="fas fa-chart-pie me-2"></i>Analyse Détaillée</h5>
+                    
+                    <div class="mb-3">
+                        <strong>Statut de la Marge :</strong>
+                        <span class="ms-2 badge ${analysis.isTargetMet ? 'bg-success' : 'bg-danger'}">
+                            ${analysis.isTargetMet ? '✅ Objectif Atteint' : '❌ Objectif Non Atteint'}
+                        </span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Markup :</strong> ${analysis.markupPercent.toFixed(1)}%
+                        <small class="text-muted ms-2">(Marge sur coût)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Répartition des Coûts :</strong>
+                        <div class="mt-2">
+                            <div class="d-flex justify-content-between">
+                                <span>Coût Opérateurs :</span>
+                                <span>${currentSimulation.operationsCost.toFixed(2)}€ (${((currentSimulation.operationsCost/analysis.totalCost)*100).toFixed(1)}%)</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Achats Externes :</span>
+                                <span>${currentSimulation.externalPurchases.toFixed(2)}€ (${((currentSimulation.externalPurchases/analysis.totalCost)*100).toFixed(1)}%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${!analysis.isTargetMet ? `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Recommandations</h6>
+                            <ul class="mb-0">
+                                <li>Prix de vente minimum pour atteindre ${analysis.marginTarget}% : <strong>${(analysis.totalCost / (1 - analysis.marginTarget/100)).toFixed(2)}€</strong></li>
+                                <li>Coût maximum pour maintenir le prix actuel : <strong>${(analysis.salePrice * (1 - analysis.marginTarget/100)).toFixed(2)}€</strong></li>
+                            </ul>
+                        </div>
+                    ` : `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Excellent ! Votre marge dépasse l'objectif de ${(analysis.marginPercent - analysis.marginTarget).toFixed(1)} points.
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function varyHourlyRate(percentage) {
+            const currentRate = parseFloat(document.getElementById('hourlyRate').value) || 15.38;
+            const newRate = currentRate * (1 + percentage / 100);
+            document.getElementById('hourlyRate').value = newRate.toFixed(2);
+            
+            if (currentSimulation.totalCost) {
+                calculateChiffrage();
+                if (document.getElementById('rentabiliteResults').innerHTML.includes('metric-card')) {
+                    analyzeRentabilite();
+                }
+            }
+        }
+
+        function varySeatsCount(percentage) {
+            const currentSeats = parseInt(document.getElementById('totalSeats').value) || 100;
+            const newSeats = Math.round(currentSeats * (1 + percentage / 100));
+            document.getElementById('totalSeats').value = newSeats;
+            
+            if (currentSimulation.totalCost) {
+                calculateChiffrage();
+                if (document.getElementById('rentabiliteResults').innerHTML.includes('metric-card')) {
+                    analyzeRentabilite();
+                }
+            }
+        }
+
+        // Fonctions utilitaires
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('fr-FR');
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function formatPercentage(value) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'percent',
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+            }).format(value / 100);
+        }
+    </script>
+</body>
+</html>
