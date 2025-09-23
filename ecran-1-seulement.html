@@ -57,57 +57,34 @@
     function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
 
     // Chargement dynamique de Supabase
-    function loadSupabase() {
-      return new Promise((resolve, reject) => {
-        if (window.supabase) {
-          resolve(window.supabase);
-          return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
-        script.onload = () => {
-          console.log('Supabase loaded successfully');
-          resolve(window.supabase);
-        };
-        script.onerror = () => {
-          console.error('Failed to load Supabase');
-          reject(new Error('Supabase loading failed'));
-        };
-        document.head.appendChild(script);
-      });
+    // Chargement dynamique de Supabase
+function loadSupabase() {
+  return new Promise((resolve, reject) => {
+    if (window.supabase && window.supabase.createClient) {
+      resolve(window.supabase);
+      return;
     }
-
-    // Variables globales
-    let supabase = null;
-    const fallback = [
-      {id: 1, name: 'Guilhem LEGAGNE', is_active: true},
-      {id: 2, name: 'Marie DUPONT', is_active: true},
-      {id: 3, name: 'Sophie BERNARD', is_active: true}
-    ];
-
-    // Fonction principale modifiée
-    document.addEventListener('DOMContentLoaded', async function init() {
-      try {
-        console.log('Loading Supabase...');
-        const supabaseLib = await loadSupabase();
-        supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase client created');
-        
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, first_name, last_name, name, is_active')
-          .eq('is_active', true)
-          .order('first_name');
-        
-        if (error) throw error;
-        render((data||[]).map(u => ({id:u.id, name:getUserDisplayName(u)})));
-      } catch(e) {
-        console.error('Supabase error:', e);
-        render(fallback);
-      }
-    });
-
+    
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+    script.onload = () => {
+      console.log('Supabase loaded successfully');
+      // Attendre un petit délai pour que l'objet soit disponible
+      setTimeout(() => {
+        if (window.supabase && window.supabase.createClient) {
+          resolve(window.supabase);
+        } else {
+          reject(new Error('Supabase createClient not found'));
+        }
+      }, 100);
+    };
+    script.onerror = () => {
+      console.error('Failed to load Supabase');
+      reject(new Error('Supabase loading failed'));
+    };
+    document.head.appendChild(script);
+  });
+}
     function render(items){
       if (!items || !items.length) items = fallback;
       document.getElementById('operatorsList').innerHTML = items.map((op, idx) => `
