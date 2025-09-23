@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation; user-select: none;
+    }
+    .screen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; color:white; }
+    h1 { font-size:2.2em; margin-bottom:30px; font-weight:300; text-align:center; }
+    .list { width:100%; max-width:480px; max-height:70vh; overflow:auto; }
+    .btn-tile {
+      width:100%; padding:20px; margin:10px 0;
+      background: rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3); border-radius:15px; color:white;
+      font-size:1.15em; font-weight:500; text-align:center; cursor:pointer; backdrop-filter:blur(10px);
+      transition: all .2s ease;
+    }
+    .btn-tile:hover, .btn-tile.selected { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.6); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
+    @media (max-width: 480px) { .screen { padding:15px; } }
+  </style>
+  <script src="config.js"></script>
+  <script>
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Fonctions utilitaires
+    const LS = {
+      op: 'prod_selected_operator',
+      pr: 'prod_selected_project',
+      opn: 'prod_selected_operation'
+    };
+    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+    function getUserDisplayName(u){ 
+      if(u.first_name && u.last_name) return u.first_name + ' ' + u.last_name; 
+      if(u.name) return u.name; 
+      return 'Utilisateur ' + (u.id ?? ''); 
+    }
+
+    // Variables globales
+    let supabaseClient = null;
+    const fallback = [
+      {id: 1, name: 'Guilhem LEGAGNE', is_active: true},
+      {id: 2, name: 'Marie DUPONT', is_active: true},
+      {id: 3, name: 'Sophie BERNARD', is_active: true}
+    ];
+
+    // Chargement et initialisation Supabase
+    function loadAndInitSupabase() {
+      return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+          console.log('Supabase script loaded');
+          
+          // Attendre que window.supabase soit disponible
+          setTimeout(() => {
+            try {
+              console.log('Checking window.supabase:', typeof window.supabase);
+              
+              if (window.supabase && typeof window.supabase.createClient === 'function') {
+                console.log('Creating Supabase client...');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client created successfully');
+                resolve(client);
+              } else {
+                console.error('window.supabase.createClient not available');
+                reject(new Error('Supabase createClient not found'));
+              }
+            } catch(error) {
+              console.error('Error creating Supabase client:', error);
+              reject(error);
+            }
+          }, 300);
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Supabase script:', error);
+          reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+
+    // Fonction principale
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('DOM loaded, initializing...');
+      
+      try {
+        // Charger et initialiser Supabase
+        supabaseClient = await loadAndInitSupabase();
+        console.log('Supabase ready, fetching users...');
+        
+        // Récupérer les données
+        const { data, error } = await supabaseClient
+          .from('users')
+          .select('id, first_name, last_name, name, is_active')
+          .eq('is_active', true)
+          .order('first_name');
+        
+        if (error) {
+          console.error('Supabase query error:', error);
+          throw error;
+        }
+        
+        console.log('Data fetched successfully:', data);
+        const users = (data || []).map(u => ({id: u.id, name: getUserDisplayName(u)}));
+        renderOperators(users);
+        
+      } catch(error) {
+        console.error('Initialization failed, using fallback:', error);
+        renderOperators(fallback);
+      }
+    });
+
+    function renderOperators(items) {
+      console.log('Rendering operators:', items);
+      
+      if (!items || !items.length) {
+        items = fallback;
+      }
+      
+      const operatorsList = document.getElementById('operatorsList');
+      if (!operatorsList) {
+        console.error('operatorsList element not found');
+        return;
+      }
+      
+      operatorsList.innerHTML = items.map((op) => `
+        <button class="btn-tile" data-id="${op.id}" data-name="${op.name}">
+          <i class="fas fa-user me-3"></i>${op.name}
+        </button>
+      `).join('');
+      
+      // Ajouter les événements de clic
+      document.querySelectorAll('.btn-tile').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const info = { 
+            id: btn.dataset.id, 
+            name: btn.dataset.name 
+          };
+          console.log('Operator selected:', info);
+          setLS(LS.op, info);
+          window.location.href = 'ecran-2-seulement.html';
+        });
+      });
+      
+      console.log('Operators rendered successfully');
+    }
+  </script>
+  <title>Sélection opérateur — Écran 1</title>
+</head>
+<body>
+  <section class="screen" style="background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+    <h1><i class="fas fa-user me-3"></i>Sélectionner un opérateur</h1>
+    <div class="list" id="operatorsList">
+      <div class="statusbar"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+    </div>
+  </section>
+</body>
+</html>
