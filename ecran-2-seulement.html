@@ -32,11 +32,11 @@
     align-items: center;
     gap: 8px;
     }
-.back-btn:hover {
-  background: rgba(255,255,255,0.25);
-  border-color: rgba(255,255,255,0.5);
-  transform: translateY(-1px);
-}
+    .back-btn:hover {
+      background: rgba(255,255,255,0.25);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-1px);
+    }
     h1 { font-size:2.2em; margin-bottom:30px; font-weight:300; text-align:center; }
     .list { width:100%; max-width:480px; max-height:70vh; overflow:auto; }
     .btn-tile {
@@ -46,99 +46,154 @@
       transition: all .2s ease;
     }
     .btn-tile:hover, .btn-tile.selected { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.6); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
-    .card { width:min(640px,95vw); padding:22px; border-radius:16px; background: rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.25); backdrop-filter: blur(10px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
-    .row { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:1.05em; }
-    .row i { width:24px; text-align:center; opacity:.95; }
-    .controls { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; }
-    .btn-white { background:#fff; color:#1f2937; }
-    .btn-outline { background:transparent; color:white; border:2px solid rgba(255,255,255,.5); }
-    .timer .time { font-size:3rem; font-weight:700; line-height:1.2; font-variant-numeric:tabular-nums; letter-spacing:1px; }
-    .timer .since { opacity:.9; margin-top:6px; font-size:.95em; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:10px; }
-    .grid .label { opacity:.95; }
-    .qty-box { display:flex; align-items:center; gap:10px; margin-top:8px; }
-    .qty-input { width:100%; padding:16px; font-size:1.6em; text-align:center; border:3px solid rgba(255,255,255,.3); border-radius:14px; background:rgba(255,255,255,.1); color:white; outline:none; }
-    .qty-btn { padding:12px 16px; font-size:1.2em; font-weight:700; border-radius:12px; border:2px solid rgba(255,255,255,.4); background:rgba(255,255,255,.15); color:white; cursor:pointer; }
     .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
-    .hidden { display:none !important; }
-    @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } .timer .time { font-size:2.4rem; } }
+    @media (max-width: 480px) { .screen { padding:15px; } }
   </style>
   <script src="config.js"></script>
   <script>
-  const SUPABASE_URL = CONFIG.SUPABASE.URL;
-  const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Fonctions utilitaires
     const LS = {
       op: 'prod_selected_operator',
       pr: 'prod_selected_project',
-      opn: 'prod_selected_operation',
-      start: 'prod_started_at',
-      end: 'prod_ended_at',
-      exec: 'prod_execution_ms',
-      pause: 'prod_pause_ms'
+      opn: 'prod_selected_operation'
     };
     function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
-    function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
-    function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
-  </script>
 
-<title>Sélection projet — Écran 2</title>
+    // Variables globales
+    let supabaseClient = null;
+    const fallback = [
+      {id: 1, name: 'Rénovation mobilier bureau', status:'en_cours'},
+      {id: 2, name: 'Maintenance préventive', status:'en_cours'},
+      {id: 3, name: 'Projet recyclage plastique', status:'terminé'},
+      {id: 4, name: 'Formation nouveaux opérateurs', status:'en_cours'},
+      {id: 5, name: 'Audit qualité', status:'en_cours'}
+    ];
+
+    // Chargement dynamique de Supabase
+    function loadAndInitSupabase() {
+      return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+          console.log('Supabase script loaded');
+          
+          setTimeout(() => {
+            try {
+              console.log('Checking window.supabase:', typeof window.supabase);
+              
+              if (window.supabase && typeof window.supabase.createClient === 'function') {
+                console.log('Creating Supabase client...');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client created successfully');
+                resolve(client);
+              } else {
+                console.error('window.supabase.createClient not available');
+                reject(new Error('Supabase createClient not found'));
+              }
+            } catch(error) {
+              console.error('Error creating Supabase client:', error);
+              reject(error);
+            }
+          }, 300);
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Supabase script:', error);
+          reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+
+    // Fonction principale
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('DOM loaded, initializing...');
+      
+      // Vérifier qu'un opérateur est sélectionné
+      const op = getLS(LS.op); 
+      if(!op) {
+        location.href='ecran-1-seulement.html';
+        return;
+      }
+      
+      // Afficher l'opérateur sélectionné
+      document.getElementById('recap').textContent = 'Opérateur: ' + op.name;
+      
+      try {
+        // Charger et initialiser Supabase
+        supabaseClient = await loadAndInitSupabase();
+        console.log('Supabase ready, fetching projects...');
+        
+        // Récupérer les projets
+        const { data, error } = await supabaseClient
+          .from('projects')
+          .select('id, name, status')
+          .eq('status', 'active')
+          .order('name');
+        
+        if (error) {
+          console.error('Supabase query error:', error);
+          throw error;
+        }
+        
+        console.log('Projects fetched successfully:', data);
+        let items = (data || []).map(p => ({id: p.id, name: p.name}));
+        if (!items.length) {
+          items = fallback.filter(p => p.status === 'en_cours').map(p => ({id: p.id, name: p.name}));
+        }
+        render(items);
+        
+      } catch(error) {
+        console.error('Initialization failed, using fallback:', error);
+        const items = fallback.filter(p => p.status === 'en_cours').map(p => ({id: p.id, name: p.name}));
+        render(items);
+      }
+    });
+
+    function render(items) {
+      console.log('Rendering projects:', items);
+      
+      document.getElementById('projectsList').innerHTML = items.map(p => `
+        <button class="btn-tile" data-id="${p.id}" data-name="${p.name}">
+          <i class="fas fa-folder me-3"></i>${p.name}
+        </button>
+      `).join('');
+      
+      document.querySelectorAll('.btn-tile').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const info = { 
+            id: Number(btn.dataset.id), 
+            name: btn.dataset.name 
+          };
+          console.log('Project selected:', info);
+          setLS(LS.pr, info);
+          window.location.href = 'ecran-3-seulement.html';
+        });
+      });
+      
+      console.log('Projects rendered successfully');
+    }
+  </script>
+  <title>Sélection projet — Écran 2</title>
 </head>
 <body>
   <section class="screen" style="background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
     <button class="back-btn" onclick="window.location.href='ecran-1-seulement.html'">
-    <i class="fas fa-arrow-left"></i>
+      <i class="fas fa-arrow-left"></i>
       Précédent
-  </button>
+    </button>
     <h1><i class="fas fa-project-diagram me-3"></i>Sélectionner un projet</h1>
     <div class="statusbar" id="recap"></div>
     <div class="list" id="projectsList">
       <div class="statusbar"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
     </div>
   </section>
-
-<script>
-let supabase = null;
-const fallback = [
-  {id: 1, name: 'Rénovation mobilier bureau', status:'en_cours'},
-  {id: 2, name: 'Maintenance préventive', status:'en_cours'},
-  {id: 3, name: 'Projet recyclage plastique', status:'terminé'},
-  {id: 4, name: 'Formation nouveaux opérateurs', status:'en_cours'},
-  {id: 5, name: 'Audit qualité', status:'en_cours'}
-];
-
-document.addEventListener('DOMContentLoaded', init);
-async function init(){
-  const op = getLS(LS.op); if(!op) return location.href='ecran-1-seulement.html';
-  document.getElementById('recap').textContent = 'Opérateur: ' + op.name;
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  try {
-    const { data, error } = await supabase.from('projects').select('id, name, status').eq('status', 'active').order('name');
-    if (error) throw error;
-    let items = (data||[]).map(p => ({id:p.id, name:p.name}));
-    if (!items.length) items = fallback.filter(p=>p.status==='en_cours').map(p=>({id:p.id, name:p.name}));
-    render(items);
-  } catch(e) {
-    const items = fallback.filter(p=>p.status==='en_cours').map(p=>({id:p.id, name:p.name}));
-    render(items);
-  }
-}
-
-function render(items){
-  document.getElementById('projectsList').innerHTML = items.map(p => `
-    <button class="btn-tile" data-id="${p.id}" data-name="${p.name}">
-      <i class="fas fa-folder me-3"></i>${p.name}
-    </button>
-  `).join('');
-  document.querySelectorAll('.btn-tile').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const info = { id: Number(btn.dataset.id), name: btn.dataset.name };
-      setLS(LS.pr, info);
-      window.location.href = 'ecran-3-seulement.html';
-    });
-  });
-}
-</script>
 </body>
 </html>
