@@ -41,40 +41,44 @@
     .hidden { display:none !important; }
     @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } .timer .time { font-size:2.4rem; } }
   </style>
-   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="config.js"></script>
-  <script>
-  const SUPABASE_URL = CONFIG.SUPABASE.URL;
-  const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
-    const LS = {
-      op: 'prod_selected_operator',
-      pr: 'prod_selected_project',
-      opn: 'prod_selected_operation',
-      start: 'prod_started_at',
-      end: 'prod_ended_at',
-      exec: 'prod_execution_ms',
-      pause: 'prod_pause_ms'
-    };
-    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
-    function fmtTime(ms){ const s=Math.max(0,Math.floor(ms/1000));const hh=String(Math.floor(s/3600)).padStart(2,'0');const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return hh+':'+mm+':'+ss; }
-    function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
-  </script>
-
-<title>Sélection opérateur — Écran 1</title>
-</head>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<body>
-
-<!-- le reste de votre contenu body -->
-  <section class="screen" style="background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
-    <h1><i class="fas fa-user me-3"></i>Sélectionner un opérateur</h1>
-    <div class="list" id="operatorsList">
-      <div class="statusbar"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
-    </div>
-  </section>
-
+   <script src="config.js"></script>
 <script>
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+// Fonctions utilitaires
+const LS = {
+  op: 'prod_selected_operator',
+  pr: 'prod_selected_project',
+  opn: 'prod_selected_operation'
+};
+function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
+
+// Chargement dynamique de Supabase
+function loadSupabase() {
+  return new Promise((resolve, reject) => {
+    if (window.supabase) {
+      resolve(window.supabase);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+    script.onload = () => {
+      console.log('Supabase loaded successfully');
+      resolve(window.supabase);
+    };
+    script.onerror = () => {
+      console.error('Failed to load Supabase');
+      reject(new Error('Supabase loading failed'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// Variables globales
 let supabase = null;
 const fallback = [
   {id: 1, name: 'Guilhem LEGAGNE', is_active: true},
@@ -82,21 +86,27 @@ const fallback = [
   {id: 3, name: 'Sophie BERNARD', is_active: true}
 ];
 
-document.addEventListener('DOMContentLoaded', init);
-async function init(){
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Fonction principale modifiée
+document.addEventListener('DOMContentLoaded', async function init() {
   try {
+    console.log('Loading Supabase...');
+    const supabaseLib = await loadSupabase();
+    supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client created');
+    
     const { data, error } = await supabase
       .from('users')
       .select('id, first_name, last_name, name, is_active')
       .eq('is_active', true)
       .order('first_name');
+    
     if (error) throw error;
     render((data||[]).map(u => ({id:u.id, name:getUserDisplayName(u)})));
   } catch(e) {
+    console.error('Supabase error:', e);
     render(fallback);
   }
-}
+});
 
 function render(items){
   if (!items || !items.length) items = fallback;
@@ -113,6 +123,7 @@ function render(items){
     });
   });
 }
+</script>
 </script>
 </body>
 </html>
