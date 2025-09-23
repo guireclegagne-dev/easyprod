@@ -19,17 +19,17 @@
     .row { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:1.05em; }
     .row i { width:24px; text-align:center; opacity:.95; }
     .controls { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; transition: all 0.2s ease; }
+    .btn { padding:14px 22px; font-size:1.05em; font-weight:600; border-radius:14px; border:none; cursor:pointer; }
     .btn-white { background:#fff; color:#1f2937; }
-    .btn-white:hover { background:#f3f4f6; transform: translateY(-1px); }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .statusbar { margin-top:8px; text-align:center; font-size:.95em; opacity:.95; }
     @media (max-width: 480px) { .screen { padding:15px; } .card { padding:18px; } }
   </style>
- <script src="config.js"></script>
+  <script src="config.js"></script>
   <script>
-  const SUPABASE_URL = CONFIG.SUPABASE.URL;
-  const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+    const SUPABASE_URL = CONFIG.SUPABASE.URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+    // Fonctions utilitaires
     const LS = {
       op: 'prod_selected_operator',
       pr: 'prod_selected_project',
@@ -42,9 +42,172 @@
     };
     function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
-  </script>
 
-<title>Prêt à démarrer — Écran 4</title>
+    // Variables globales
+    let supabaseClient = null;
+
+    // Chargement dynamique de Supabase
+    function loadAndInitSupabase() {
+      return new Promise((resolve, reject) => {
+        console.log('Starting Supabase load...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        script.onload = () => {
+          console.log('Supabase script loaded');
+          
+          setTimeout(() => {
+            try {
+              console.log('Checking window.supabase:', typeof window.supabase);
+              
+              if (window.supabase && typeof window.supabase.createClient === 'function') {
+                console.log('Creating Supabase client...');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client created successfully');
+                resolve(client);
+              } else {
+                console.error('window.supabase.createClient not available');
+                reject(new Error('Supabase createClient not found'));
+              }
+            } catch(error) {
+              console.error('Error creating Supabase client:', error);
+              reject(error);
+            }
+          }, 300);
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Supabase script:', error);
+          reject(new Error('Script loading failed'));
+        };
+        
+        document.head.appendChild(script);
+      });
+    }
+
+    // Fonction principale
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('DOM loaded, initializing...');
+      
+      // Vérifications des étapes précédentes
+      const op = getLS(LS.op), pr = getLS(LS.pr), opn = getLS(LS.opn);
+      if(!op) {
+        location.href='ecran-1-seulement.html';
+        return;
+      }
+      if(!pr) {
+        location.href='ecran-2-seulement.html';
+        return;
+      }
+      if(!opn) {
+        location.href='ecran-3-seulement.html';
+        return;
+      }
+      
+      // Affichage du récapitulatif
+      document.getElementById('rOp').textContent = op.name;
+      document.getElementById('rProj').textContent = pr.name;
+      document.getElementById('rOpn').textContent = opn.name;
+      
+      try {
+        // Charger et initialiser Supabase
+        supabaseClient = await loadAndInitSupabase();
+        console.log('Supabase ready for task creation');
+        
+        // Activer le bouton de démarrage
+        document.getElementById('startBtn').addEventListener('click', startTask);
+        
+      } catch(error) {
+        console.error('Supabase initialization failed:', error);
+        document.getElementById('dbStatus').innerHTML = 'Mode offline - Prêt à démarrer';
+        
+        // En mode offline, démarrage sans Supabase
+        document.getElementById('startBtn').addEventListener('click', startTaskOffline);
+      }
+    });
+
+    async function startTask() {
+      const startBtn = document.getElementById('startBtn');
+      const dbStatus = document.getElementById('dbStatus');
+      
+      startBtn.disabled = true;
+      dbStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création de la tâche...';
+      
+      const now = new Date().toISOString();
+      setLS(LS.start, now);
+      
+      // Collecter toutes les données
+      const op = getLS(LS.op);
+      const pr = getLS(LS.pr);
+      const opn = getLS(LS.opn);
+      
+      try {
+        // Insertion complète en une fois
+        const payload = {
+          operator_id: String(op.id),
+          operator_name: op.name,
+          project_id: pr.id,
+          project_name: pr.name,
+          operation_id: opn.id,
+          operation_name: opn.name,
+          started_at: now,
+          status: 'in_progress',
+          pause_ms: 0
+        };
+        
+        const { data, error } = await supabaseClient
+          .from('tasks')
+          .insert(payload)
+          .select('id')
+          .single();
+        
+        if (error) throw error;
+        
+        // Stocker l'ID pour les écrans suivants
+        setLS(LS.taskId, data.id);
+        
+        dbStatus.innerHTML = 'Tâche créée avec succès';
+        
+        // Reset des données de timing précédentes
+        localStorage.removeItem(LS.end); 
+        localStorage.removeItem(LS.exec); 
+        localStorage.removeItem(LS.pause);
+        
+        setTimeout(() => {
+          window.location.href = 'ecran-5-seulement.html';
+        }, 800);
+        
+      } catch(e) {
+        console.error('Erreur création tâche complète:', e);
+        dbStatus.innerHTML = 'Erreur: ' + (e.message || 'Impossible de créer la tâche');
+        startBtn.disabled = false;
+        
+        // Proposer de continuer en mode offline après 3 secondes
+        setTimeout(() => {
+          dbStatus.innerHTML = 'Mode offline - Cliquez pour continuer';
+          startBtn.disabled = false;
+          startBtn.onclick = startTaskOffline;
+        }, 3000);
+      }
+    }
+
+    function startTaskOffline() {
+      console.log('Starting task in offline mode');
+      const now = new Date().toISOString();
+      setLS(LS.start, now);
+      
+      // En mode offline, pas de taskId
+      localStorage.removeItem(LS.taskId);
+      
+      // Reset des données de timing précédentes
+      localStorage.removeItem(LS.end); 
+      localStorage.removeItem(LS.exec); 
+      localStorage.removeItem(LS.pause);
+      
+      window.location.href = 'ecran-5-seulement.html';
+    }
+  </script>
+  <title>Prêt à démarrer — Écran 4</title>
 </head>
 <body>
   <section class="screen" style="background: linear-gradient(135deg,#11998e 0%,#38ef7d 100%);">
@@ -59,95 +222,5 @@
       <div class="statusbar" id="dbStatus"></div>
     </div>
   </section>
-
-<script>
-let supabase = null;
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const op = getLS(LS.op), pr=getLS(LS.pr), opn=getLS(LS.opn);
-  if(!op) return location.href='ecran-1-seulement.html';
-  if(!pr) return location.href='ecran-2-seulement.html';
-  if(!opn) return location.href='ecran-3-seulement.html';
-  
-  document.getElementById('rOp').textContent = op.name;
-  document.getElementById('rProj').textContent = pr.name;
-  document.getElementById('rOpn').textContent = opn.name;
-  
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
-  document.getElementById('startBtn').addEventListener('click', async ()=>{
-    await startTask();
-  });
-});
-
-async function startTask() {
-  const startBtn = document.getElementById('startBtn');
-  const dbStatus = document.getElementById('dbStatus');
-  
-  startBtn.disabled = true;
-  dbStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création de la tâche...';
-  
-  const now = new Date().toISOString();
-  setLS(LS.start, now);
-  
-  // Collecter toutes les données
-  const op = getLS(LS.op);
-  const pr = getLS(LS.pr);
-  const opn = getLS(LS.opn);
-  
-  try {
-    // Insertion complète en une fois
-    const payload = {
-      operator_id: String(op.id),
-      operator_name: op.name,
-      project_id: pr.id,
-      project_name: pr.name,
-      operation_id: opn.id,
-      operation_name: opn.name,
-      started_at: now,
-      status: 'in_progress',
-      pause_ms: 0
-    };
-    
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(payload)
-      .select('id')
-      .single();
-    
-    if (error) throw error;
-    
-    // Stocker l'ID pour les écrans suivants
-    setLS(LS.taskId, data.id);
-    
-    dbStatus.innerHTML = 'Tâche créée avec succès';
-    
-    // Reset des données de timing précédentes
-    localStorage.removeItem(LS.end); 
-    localStorage.removeItem(LS.exec); 
-    localStorage.removeItem(LS.pause);
-    
-    setTimeout(() => {
-      window.location.href = 'ecran-5-seulement.html';
-    }, 800);
-    
-  } catch(e) {
-    console.error('Erreur création tâche complète:', e);
-    dbStatus.innerHTML = 'Erreur: ' + (e.message || 'Impossible de créer la tâche');
-    startBtn.disabled = false;
-    
-    // Proposer de continuer en mode offline après 3 secondes
-    setTimeout(() => {
-      dbStatus.innerHTML = 'Mode offline - Cliquez pour continuer';
-      startBtn.disabled = false;
-      startBtn.onclick = () => {
-        // En mode offline, pas de taskId
-        localStorage.removeItem(LS.taskId);
-        window.location.href = 'ecran-5-seulement.html';
-      };
-    }, 3000);
-  }
-}
-</script>
 </body>
 </html>
