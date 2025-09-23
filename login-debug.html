@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Debug - Système de Production</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .form-floating input {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .form-floating input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="text-center mb-4">
+            <h1 class="text-primary">
+                <i class="fas fa-bug"></i> Login Debug
+            </h1>
+            <p class="text-muted">Version de test avec informations de debug</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <form id="loginForm">
+            <div class="form-floating">
+                <input type="email" class="form-control" id="email" placeholder="Email" required>
+                <label for="email"><i class="fas fa-envelope me-2"></i>Email</label>
+            </div>
+            
+            <div class="form-floating">
+                <input type="password" class="form-control" id="password" placeholder="Mot de passe" required>
+                <label for="password"><i class="fas fa-lock me-2"></i>Mot de passe</label>
+            </div>
+            
+            <button type="submit" class="btn btn-login" id="loginBtn">
+                <i class="fas fa-sign-in-alt me-2"></i>Se connecter (Debug)
+            </button>
+        </form>
+
+        <div class="debug-info">
+            <strong>📝 Informations de debug :</strong>
+            <div id="debugLog">En attente de tentative de connexion...</div>
+        </div>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Utilisateurs connus : gilles@tertiorecycle.fr, rachid@tertiorecycle.fr, oceane@tertiorecycle.fr, christian@tertiorecycle.fr, kevin@tertiorecycle.fr
+            </small>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+        let supabase = null;
+        
+        // Fonction pour logger les informations de debug
+        function debugLog(message) {
+            const debugDiv = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `<br>[${timestamp}] ${message}`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            debugLog('✅ Client Supabase initialisé');
+            
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            debugLog(`🔍 Tentative de connexion avec: ${email}`);
+            
+            if (!email || !password) {
+                showAlert('Veuillez remplir tous les champs', 'danger');
+                debugLog('❌ Champs manquants');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connexion...';
+            
+            try {
+                debugLog('🔍 Recherche de l\'utilisateur dans la base...');
+                
+                // Recherche de l'utilisateur
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, password_hash, first_name, last_name, is_admin, is_active')
+                    .eq('email', email.toLowerCase())
+                    .single();
+                
+                if (userError) {
+                    debugLog(`❌ Erreur requête utilisateur: ${userError.message}`);
+                    showAlert('Erreur de connexion à la base de données', 'danger');
+                    return;
+                }
+                
+                if (!userData) {
+                    debugLog('❌ Utilisateur non trouvé');
+                    showAlert('Email ou mot de passe incorrect', 'danger');
+                    return;
+                }
+                
+                debugLog(`✅ Utilisateur trouvé: ${userData.first_name} ${userData.last_name}`);
+                debugLog(`🔒 Hash en base: ${userData.password_hash}`);
+                
+                // Test des différentes méthodes de vérification du mot de passe
+                debugLog('🔍 Test 1: Comparaison directe');
+                const directMatch = password === userData.password_hash;
+                debugLog(`   Résultat: ${directMatch ? '✅ Match' : '❌ Pas de match'}`);
+                
+                debugLog('🔍 Test 2: Hash avec salt');
+                const hashedPassword = btoa(password + 'salt_secret_key');
+                debugLog(`   Mot de passe hashé: ${hashedPassword}`);
+                const hashMatch = hashedPassword === userData.password_hash;
+                debugLog(`   Résultat: ${hashMatch ? '✅ Match' : '❌ Pas de match'}`);
+                
+                debugLog('🔍 Test 3: Décodage base64 du hash');
+                try {
+                    const decodedHash = atob(userData.password_hash);
+                    debugLog(`   Hash décodé: ${decodedHash}`);
+                    const decodedMatch = password === decodedHash || password === decodedHash.replace('salt_secret_key', '');
+                    debugLog(`   Résultat: ${decodedMatch ? '✅ Match' : '❌ Pas de match'}`);
+                } catch (error) {
+                    debugLog(`   ❌ Impossible de décoder le hash: ${error.message}`);
+                }
+                
+                // Vérification finale
+                const isValidPassword = directMatch || hashMatch;
+                
+                if (!isValidPassword) {
+                    debugLog('❌ ÉCHEC: Aucune méthode de vérification n\'a fonctionné');
+                    showAlert('Email ou mot de passe incorrect', 'danger');
+                    return;
+                }
+                
+                if (!userData.is_active) {
+                    debugLog('❌ Compte désactivé');
+                    showAlert('Compte désactivé. Contactez un administrateur.', 'warning');
+                    return;
+                }
+                
+                debugLog('✅ SUCCÈS: Authentification réussie !');
+                showAlert('Connexion réussie !', 'success');
+                
+                // Simuler la redirection après 2 secondes
+                setTimeout(() => {
+                    debugLog('🚀 Redirection vers l\'application...');
+                    if (userData.is_admin) {
+                        debugLog('👑 Redirection vers interface admin');
+                        // window.location.href = 'user-management.html';
+                        alert('Redirection vers user-management.html (simulée)');
+                    } else {
+                        debugLog('👤 Redirection vers interface utilisateur');
+                        // window.location.href = 'interface-utilisateur.html';
+                        alert('Redirection vers interface-utilisateur.html (simulée)');
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                debugLog(`💥 Erreur critique: ${error.message}`);
+                console.error('Erreur complète:', error);
+                showAlert('Erreur de connexion. Vérifiez la console pour plus de détails.', 'danger');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Se connecter (Debug)';
+            }
+        }
+        
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
