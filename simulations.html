@@ -157,6 +157,42 @@
             border-left: 4px solid var(--secondary-color);
         }
 
+        .operations-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 10px;
+        }
+
+        .operation-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .operation-item:hover {
+            background: #e3f2fd;
+            border-color: var(--secondary-color);
+        }
+
+        .operation-item.selected {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .category-badge {
+            font-size: 0.75em;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
         .planning-timeline {
             position: relative;
             padding-left: 30px;
@@ -283,7 +319,7 @@
                                 <div id="operationsList">
                                     <!-- Les opérations seront générées par JavaScript -->
                                 </div>
-                                <button type="button" class="btn btn-outline-primary" onclick="addOperation()">
+                                <button type="button" class="btn btn-outline-primary" onclick="addOperationLine()">
                                     <i class="fas fa-plus me-2"></i>Ajouter une opération
                                 </button>
                             </div>
@@ -449,77 +485,290 @@
         </div>
     </div>
 
+    <!-- Modal pour sélectionner une opération -->
+    <div class="modal fade" id="operationSelectionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-cogs me-2"></i>Sélectionner une Opération</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="categoryFilter" class="form-label">Filtrer par catégorie :</label>
+                        <select class="form-select" id="categoryFilter" onchange="filterOperationsByCategory()">
+                            <option value="">Toutes les catégories</option>
+                        </select>
+                    </div>
+                    <div class="operations-panel" id="availableOperations">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Chargement des opérations...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="selectOperation()">Sélectionner</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Variables globales
-        let operations = [
-            { name: 'Démontage', timePerUnit: 0.5, category: 'Désassemblage' },
-            { name: 'Nettoyage roulettes', timePerUnit: 0.3, category: 'Nettoyage' },
-            { name: 'Peinture roulettes', timePerUnit: 0.8, category: 'Rénovation' },
-            { name: 'Nettoyage structure', timePerUnit: 0.4, category: 'Nettoyage' },
-            { name: 'Peinture structure', timePerUnit: 1.2, category: 'Rénovation' },
-            { name: 'Assemblage final', timePerUnit: 0.7, category: 'Assemblage' }
-        ];
+        // Configuration Supabase
+        const SUPABASE_URL = 'https://your-supabase-url.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
 
+        // Variables globales
+        let supabase = null;
+        let allOperationsFromDB = [];
+        let filteredOperations = [];
+        let selectedOperationForModal = null;
+        let currentOperationLineIndex = -1;
+        let operationLines = [];
         let purchases = [];
         let currentSimulation = {};
 
+        // Opérations par défaut (fallback)
+        const defaultOperations = [
+            { id: 1, name: 'Démontage', category: 'Désassemblage', average_time_per_unit: 0.5, unit: 'pièce' },
+            { id: 2, name: 'Nettoyage roulettes', category: 'Nettoyage', average_time_per_unit: 0.3, unit: 'pièce' },
+            { id: 3, name: 'Peinture roulettes', category: 'Rénovation', average_time_per_unit: 0.8, unit: 'pièce' },
+            { id: 4, name: 'Nettoyage structure', category: 'Nettoyage', average_time_per_unit: 0.4, unit: 'pièce' },
+            { id: 5, name: 'Peinture structure', category: 'Rénovation', average_time_per_unit: 1.2, unit: 'pièce' },
+            { id: 6, name: 'Assemblage final', category: 'Assemblage', average_time_per_unit: 0.7, unit: 'pièce' },
+            { id: 7, name: 'Contrôle qualité', category: 'Qualité', average_time_per_unit: 0.2, unit: 'pièce' },
+            { id: 8, name: 'Emballage', category: 'Finition', average_time_per_unit: 0.3, unit: 'pièce' }
+        ];
+
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
-            renderOperations();
+            initializeSupabase();
+            loadOperationsFromDB();
             setDefaultDate();
+            renderOperationLines();
         });
+
+        async function initializeSupabase() {
+            try {
+                if (typeof window.supabase !== 'undefined') {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Supabase initialisé');
+                } else {
+                    console.warn('⚠️ Supabase non disponible, mode fallback');
+                }
+            } catch (error) {
+                console.warn('⚠️ Erreur initialisation Supabase:', error);
+            }
+        }
+
+        async function loadOperationsFromDB() {
+            try {
+                if (!supabase) {
+                    throw new Error('Supabase non disponible');
+                }
+
+                const { data, error } = await supabase
+                    .from('operations')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('category', { ascending: true })
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+
+                allOperationsFromDB = data || [];
+                
+                if (allOperationsFromDB.length === 0) {
+                    throw new Error('Aucune opération trouvée');
+                }
+
+                console.log('✅ Opérations chargées depuis la base:', allOperationsFromDB.length);
+                
+            } catch (error) {
+                console.warn('⚠️ Erreur chargement opérations, utilisation du fallback:', error);
+                allOperationsFromDB = defaultOperations;
+            }
+
+            // Initialiser les catégories
+            populateCategoryFilter();
+        }
+
+        function populateCategoryFilter() {
+            const categories = [...new Set(allOperationsFromDB.map(op => op.category))].sort();
+            const categoryFilter = document.getElementById('categoryFilter');
+            
+            categoryFilter.innerHTML = '<option value="">Toutes les catégories</option>';
+            categories.forEach(category => {
+                categoryFilter.innerHTML += `<option value="${category}">${category}</option>`;
+            });
+        }
 
         function setDefaultDate() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('startDate').value = today;
         }
 
-        function renderOperations() {
+        function renderOperationLines() {
             const container = document.getElementById('operationsList');
-            container.innerHTML = operations.map((op, index) => `
+            container.innerHTML = operationLines.map((line, index) => `
                 <div class="operation-row">
                     <div class="row align-items-center">
-                        <div class="col-md-5">
-                            <input type="text" class="form-control" value="${op.name}" 
-                                   onchange="updateOperation(${index}, 'name', this.value)">
+                        <div class="col-md-6">
+                            <label class="form-label small">Opération sélectionnée :</label>
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">${line.operation ? line.operation.name : 'Aucune opération sélectionnée'}</span>
+                                ${line.operation ? `<span class="badge bg-secondary category-badge">${line.operation.category}</span>` : ''}
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-1" 
+                                    onclick="openOperationSelection(${index})">
+                                <i class="fas fa-search me-1"></i>Choisir une opération
+                            </button>
                         </div>
-                        <div class="col-md-3">
-                            <input type="number" class="form-control" value="${op.timePerUnit}" 
-                                   step="0.1" min="0" placeholder="Temps/unité (h)"
-                                   onchange="updateOperation(${index}, 'timePerUnit', parseFloat(this.value))">
+                        <div class="col-md-2">
+                            <label class="form-label small">Temps/unité (h) :</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   value="${line.timePerUnit || (line.operation ? line.operation.average_time_per_unit : 1.0)}" 
+                                   step="0.1" min="0" 
+                                   onchange="updateOperationLine(${index}, 'timePerUnit', parseFloat(this.value))">
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-select" onchange="updateOperation(${index}, 'category', this.value)">
-                                <option value="Désassemblage" ${op.category === 'Désassemblage' ? 'selected' : ''}>Désassemblage</option>
-                                <option value="Nettoyage" ${op.category === 'Nettoyage' ? 'selected' : ''}>Nettoyage</option>
-                                <option value="Rénovation" ${op.category === 'Rénovation' ? 'selected' : ''}>Rénovation</option>
-                                <option value="Assemblage" ${op.category === 'Assemblage' ? 'selected' : ''}>Assemblage</option>
-                                <option value="Qualité" ${op.category === 'Qualité' ? 'selected' : ''}>Qualité</option>
-                            </select>
+                        <div class="col-md-2">
+                            <label class="form-label small">Quantité :</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   value="${line.quantity || ''}" 
+                                   min="0" 
+                                   placeholder="Auto"
+                                   onchange="updateOperationLine(${index}, 'quantity', parseInt(this.value))"
+                                   title="Laissez vide pour utiliser le nombre total de sièges">
                         </div>
                         <div class="col-md-1">
-                            <button class="btn btn-outline-danger btn-sm" onclick="removeOperation(${index})">
+                            <label class="form-label small">&nbsp;</label>
+                            <button class="btn btn-outline-danger btn-sm d-block" onclick="removeOperationLine(${index})">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                 </div>
             `).join('');
+
+            if (operationLines.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-cogs fa-2x mb-2"></i>
+                        <p>Aucune opération ajoutée. Cliquez sur "Ajouter une opération" pour commencer.</p>
+                    </div>
+                `;
+            }
         }
 
-        function addOperation() {
-            operations.push({ name: 'Nouvelle opération', timePerUnit: 1.0, category: 'Désassemblage' });
-            renderOperations();
+        function addOperationLine() {
+            operationLines.push({
+                operation: null,
+                timePerUnit: 1.0,
+                quantity: null
+            });
+            renderOperationLines();
         }
 
-        function removeOperation(index) {
-            operations.splice(index, 1);
-            renderOperations();
+        function removeOperationLine(index) {
+            operationLines.splice(index, 1);
+            renderOperationLines();
         }
 
-        function updateOperation(index, field, value) {
-            operations[index][field] = value;
+        function updateOperationLine(index, field, value) {
+            operationLines[index][field] = value;
+        }
+
+        function openOperationSelection(lineIndex) {
+            currentOperationLineIndex = lineIndex;
+            selectedOperationForModal = null;
+            
+            // Réinitialiser le filtre
+            document.getElementById('categoryFilter').value = '';
+            filterOperationsByCategory();
+            
+            // Ouvrir la modal
+            const modal = new bootstrap.Modal(document.getElementById('operationSelectionModal'));
+            modal.show();
+        }
+
+        function filterOperationsByCategory() {
+            const selectedCategory = document.getElementById('categoryFilter').value;
+            
+            if (selectedCategory === '') {
+                filteredOperations = [...allOperationsFromDB];
+            } else {
+                filteredOperations = allOperationsFromDB.filter(op => op.category === selectedCategory);
+            }
+            
+            renderAvailableOperations();
+        }
+
+        function renderAvailableOperations() {
+            const container = document.getElementById('availableOperations');
+            
+            if (filteredOperations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>Aucune opération trouvée pour cette catégorie</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredOperations.map(operation => `
+                <div class="operation-item" onclick="selectOperationFromList(${operation.id})" data-operation-id="${operation.id}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold">${operation.name}</div>
+                            <small class="text-muted">
+                                ${operation.average_time_per_unit || 1.0}h par ${operation.unit || 'pièce'}
+                            </small>
+                        </div>
+                        <div>
+                            <span class="badge bg-info category-badge">${operation.category}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectOperationFromList(operationId) {
+            // Désélectionner toutes les opérations
+            document.querySelectorAll('.operation-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Sélectionner l'opération cliquée
+            const clickedItem = document.querySelector(`[data-operation-id="${operationId}"]`);
+            if (clickedItem) {
+                clickedItem.classList.add('selected');
+                selectedOperationForModal = allOperationsFromDB.find(op => op.id === operationId);
+            }
+        }
+
+        function selectOperation() {
+            if (!selectedOperationForModal || currentOperationLineIndex === -1) {
+                alert('Veuillez sélectionner une opération');
+                return;
+            }
+            
+            // Mettre à jour la ligne d'opération
+            operationLines[currentOperationLineIndex].operation = selectedOperationForModal;
+            operationLines[currentOperationLineIndex].timePerUnit = selectedOperationForModal.average_time_per_unit || 1.0;
+            
+            // Fermer la modal
+            bootstrap.Modal.getInstance(document.getElementById('operationSelectionModal')).hide();
+            
+            // Re-render les lignes d'opérations
+            renderOperationLines();
+            
+            // Réinitialiser les variables
+            currentOperationLineIndex = -1;
+            selectedOperationForModal = null;
         }
 
         function addPurchase() {
@@ -546,20 +795,34 @@
             const totalSeats = parseInt(document.getElementById('totalSeats').value) || 0;
             const hourlyRate = parseFloat(document.getElementById('hourlyRate').value) || 0;
 
+            if (operationLines.length === 0) {
+                alert('Veuillez ajouter au moins une opération');
+                return;
+            }
+
             // Calculer le coût des opérations
             let totalOperationHours = 0;
             let operationBreakdown = [];
 
-            operations.forEach(op => {
-                const hours = op.timePerUnit * totalSeats;
+            operationLines.forEach((line, index) => {
+                if (!line.operation) {
+                    return; // Ignorer les lignes sans opération sélectionnée
+                }
+
+                const quantity = line.quantity || totalSeats; // Utiliser totalSeats si pas de quantité spécifique
+                const timePerUnit = line.timePerUnit || line.operation.average_time_per_unit || 1.0;
+                const hours = timePerUnit * quantity;
                 const cost = hours * hourlyRate;
+                
                 totalOperationHours += hours;
                 
                 operationBreakdown.push({
-                    name: op.name,
+                    name: line.operation.name,
+                    category: line.operation.category,
+                    quantity: quantity,
+                    timePerUnit: timePerUnit,
                     hours: hours,
-                    cost: cost,
-                    category: op.category
+                    cost: cost
                 });
             });
 
@@ -634,14 +897,17 @@
                 <div class="results-card">
                     <h5><i class="fas fa-list me-2"></i>Détail des Opérations</h5>
                     ${sim.operationBreakdown.map(op => `
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: white; border-radius: 6px;">
                             <div>
-                                <strong>${op.name}</strong>
-                                <small class="text-muted ms-2">(${op.category})</small>
+                                <div class="fw-bold">${op.name}</div>
+                                <div class="d-flex align-items-center">
+                                    <small class="text-muted me-2">${op.quantity} × ${op.timePerUnit}h</small>
+                                    <span class="badge bg-secondary category-badge">${op.category}</span>
+                                </div>
                             </div>
                             <div class="text-end">
-                                <div>${op.hours.toFixed(1)}h</div>
-                                <div class="text-success"><strong>${op.cost.toFixed(2)}€</strong></div>
+                                <div class="text-muted small">${op.hours.toFixed(1)}h</div>
+                                <div class="text-success fw-bold">${op.cost.toFixed(2)}€</div>
                             </div>
                         </div>
                     `).join('')}
@@ -651,9 +917,9 @@
                     <div class="results-card">
                         <h5><i class="fas fa-shopping-cart me-2"></i>Achats Externes</h5>
                         ${sim.purchaseBreakdown.map(purchase => `
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>${purchase.description}</div>
-                                <div class="text-success"><strong>${purchase.amount.toFixed(2)}€</strong></div>
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: white; border-radius: 6px;">
+                                <div class="fw-bold">${purchase.description}</div>
+                                <div class="text-success fw-bold">${purchase.amount.toFixed(2)}€</div>
                             </div>
                         `).join('')}
                     </div>
@@ -720,24 +986,23 @@
 
         function assignOperationsToDay(availableHours, dayIndex) {
             // Logique simplifiée pour assigner les opérations aux jours
-            const totalSeats = currentSimulation.totalSeats;
             let assignedOps = [];
             let usedHours = 0;
 
-            operations.forEach((op, opIndex) => {
+            currentSimulation.operationBreakdown.forEach((op, opIndex) => {
                 if (usedHours < availableHours) {
-                    const seatsForThisOp = Math.min(
-                        Math.floor((availableHours - usedHours) / op.timePerUnit),
-                        totalSeats
-                    );
+                    const maxQuantityForDay = Math.floor((availableHours - usedHours) / op.timePerUnit);
+                    const quantityToAssign = Math.min(maxQuantityForDay, Math.max(1, Math.floor(op.quantity / 3))); // Répartir sur plusieurs jours
                     
-                    if (seatsForThisOp > 0) {
+                    if (quantityToAssign > 0) {
+                        const hoursForThisOp = quantityToAssign * op.timePerUnit;
                         assignedOps.push({
                             name: op.name,
-                            seats: seatsForThisOp,
-                            hours: seatsForThisOp * op.timePerUnit
+                            category: op.category,
+                            quantity: quantityToAssign,
+                            hours: hoursForThisOp
                         });
-                        usedHours += seatsForThisOp * op.timePerUnit;
+                        usedHours += hoursForThisOp;
                     }
                 }
             });
@@ -791,9 +1056,10 @@
                                         <div class="mt-2">
                                             <small class="text-muted">Opérations :</small>
                                             ${day.operations.map(op => `
-                                                <div class="ms-3">
+                                                <div class="ms-3 d-flex align-items-center">
                                                     <i class="fas fa-arrow-right me-1"></i>
-                                                    ${op.name} : ${op.seats} sièges (${op.hours.toFixed(1)}h)
+                                                    <span class="me-2">${op.name} : ${op.quantity} unités (${op.hours.toFixed(1)}h)</span>
+                                                    <span class="badge bg-secondary category-badge">${op.category}</span>
                                                 </div>
                                             `).join('')}
                                         </div>
@@ -954,26 +1220,6 @@
                     analyzeRentabilite();
                 }
             }
-        }
-
-        // Fonctions utilitaires
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('fr-FR');
-        }
-
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('fr-FR', {
-                style: 'currency',
-                currency: 'EUR'
-            }).format(amount);
-        }
-
-        function formatPercentage(value) {
-            return new Intl.NumberFormat('fr-FR', {
-                style: 'percent',
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1
-            }).format(value / 100);
         }
     </script>
 </body>
