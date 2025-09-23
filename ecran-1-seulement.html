@@ -43,64 +43,102 @@
   </style>
   <script src="config.js"></script>
   <script>
-    const SUPABASE_URL = CONFIG.SUPABASE.URL;
-    const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+const SUPABASE_URL = CONFIG.SUPABASE.URL;
+const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
 
-    // Fonctions utilitaires
-    const LS = {
-      op: 'prod_selected_operator',
-      pr: 'prod_selected_project',
-      opn: 'prod_selected_operation'
-    };
-    function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-    function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
-    function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
+// Fonctions utilitaires
+const LS = {
+  op: 'prod_selected_operator',
+  pr: 'prod_selected_project',
+  opn: 'prod_selected_operation'
+};
+function setLS(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function getLS(key) { try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+function getUserDisplayName(u){ if(u.first_name&&u.last_name) return u.first_name+' '+u.last_name; if(u.name) return u.name; return 'Utilisateur '+(u.id??''); }
 
-    // Chargement dynamique de Supabase
-    // Chargement dynamique de Supabase
-function loadSupabase() {
+// Variables globales
+let supabase = null;
+const fallback = [
+  {id: 1, name: 'Guilhem LEGAGNE', is_active: true},
+  {id: 2, name: 'Marie DUPONT', is_active: true},
+  {id: 3, name: 'Sophie BERNARD', is_active: true}
+];
+
+// Chargement et initialisation
+function initSupabase() {
   return new Promise((resolve, reject) => {
-    if (window.supabase && window.supabase.createClient) {
-      resolve(window.supabase);
-      return;
-    }
+    // Supprimer les anciens scripts
+    const existingScript = document.querySelector('script[src*="supabase"]');
+    if (existingScript) existingScript.remove();
     
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
     script.onload = () => {
-      console.log('Supabase loaded successfully');
-      // Attendre un petit délai pour que l'objet soit disponible
+      console.log('Script loaded');
       setTimeout(() => {
-        if (window.supabase && window.supabase.createClient) {
-          resolve(window.supabase);
-        } else {
-          reject(new Error('Supabase createClient not found'));
+        try {
+          if (window.supabase && window.supabase.createClient) {
+            console.log('Supabase available, creating client');
+            const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Client created successfully');
+            resolve(client);
+          } else {
+            console.error('window.supabase.createClient not found');
+            reject(new Error('Supabase not available'));
+          }
+        } catch(e) {
+          console.error('Error creating client:', e);
+          reject(e);
         }
-      }, 100);
+      }, 200);
     };
-    script.onerror = () => {
-      console.error('Failed to load Supabase');
-      reject(new Error('Supabase loading failed'));
+    script.onerror = (e) => {
+      console.error('Script loading failed:', e);
+      reject(e);
     };
     document.head.appendChild(script);
   });
 }
-    function render(items){
-      if (!items || !items.length) items = fallback;
-      document.getElementById('operatorsList').innerHTML = items.map((op, idx) => `
-        <button class="btn-tile" data-id="${op.id}" data-name="${op.name}">
-          <i class="fas fa-user me-3"></i>${op.name}
-        </button>
-      `).join('');
-      document.querySelectorAll('.btn-tile').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const info = { id: btn.dataset.id, name: btn.dataset.name };
-          setLS(LS.op, info);
-          window.location.href = 'ecran-2-seulement.html';
-        });
-      });
-    }
-  </script>
+
+// Fonction principale
+document.addEventListener('DOMContentLoaded', async function() {
+  try {
+    console.log('Starting initialization...');
+    supabase = await initSupabase();
+    console.log('Supabase client ready, fetching data...');
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, name, is_active')
+      .eq('is_active', true)
+      .order('first_name');
+    
+    if (error) throw error;
+    console.log('Data fetched successfully:', data);
+    render((data||[]).map(u => ({id:u.id, name:getUserDisplayName(u)})));
+  } catch(e) {
+    console.error('Error during initialization:', e);
+    console.log('Using fallback data');
+    render(fallback);
+  }
+});
+
+function render(items){
+  if (!items || !items.length) items = fallback;
+  document.getElementById('operatorsList').innerHTML = items.map((op, idx) => `
+    <button class="btn-tile" data-id="${op.id}" data-name="${op.name}">
+      <i class="fas fa-user me-3"></i>${op.name}
+    </button>
+  `).join('');
+  document.querySelectorAll('.btn-tile').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const info = { id: btn.dataset.id, name: btn.dataset.name };
+      setLS(LS.op, info);
+      window.location.href = 'ecran-2-seulement.html';
+    });
+  });
+}
+</script>
   <title>Sélection opérateur — Écran 1</title>
 </head>
 <body>
