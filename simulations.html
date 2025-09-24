@@ -544,9 +544,9 @@
         ];
 
         // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             initializeSupabase();
-            loadOperationsFromDB();
+            await loadOperationsFromDB();
             setDefaultDate();
             renderOperationLines();
         });
@@ -592,19 +592,46 @@
                 allOperationsFromDB = defaultOperations;
             }
 
-            // Initialiser les catégories
-            populateCategoryFilter();
+           // Initialiser les catégories (async)
+            await populateCategoryFilter();
+        }
+        async function loadCategoriesFromSupabase() {
+    try {
+        if (!supabase) {
+            throw new Error('Supabase non disponible');
         }
 
-        function populateCategoryFilter() {
-            const categories = [...new Set(allOperationsFromDB.map(op => op.category))].sort();
-            const categoryFilter = document.getElementById('categoryFilter');
-            
-            categoryFilter.innerHTML = '<option value="">Toutes les catégories</option>';
-            categories.forEach(category => {
-                categoryFilter.innerHTML += `<option value="${category}">${category}</option>`;
-            });
-        }
+        // Récupérer toutes les catégories distinctes depuis la table operations
+        const { data, error } = await supabase
+            .from('operations')
+            .select('category')
+            .eq('is_active', true)
+            .not('category', 'is', null);
+
+        if (error) throw error;
+
+        // Extraire les catégories uniques et les trier
+        const categories = [...new Set(data.map(op => op.category))].sort();
+        
+        return categories;
+
+    } catch (error) {
+        console.warn('⚠️ Erreur chargement catégories depuis Supabase, utilisation du fallback:', error);
+        // Fallback avec les catégories que vous mentionnez
+        return ['production', 'logistique', 'operation light', 'organisation', 'représentation'];
+    }
+}
+        async function populateCategoryFilter() {
+    // Récupérer les catégories depuis Supabase
+    const categories = await loadCategoriesFromSupabase();
+    
+    const categoryFilter = document.getElementById('categoryFilter');
+    
+    categoryFilter.innerHTML = '<option value="">Toutes les catégories</option>';
+    categories.forEach(category => {
+        categoryFilter.innerHTML += `<option value="${category}">${category}</option>`;
+    });
+}
 
         function setDefaultDate() {
             const today = new Date().toISOString().split('T')[0];
@@ -616,32 +643,24 @@
             container.innerHTML = operationLines.map((line, index) => `
                 <div class="operation-row">
                     <div class="row align-items-center">
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <label class="form-label small">Opération sélectionnée :</label>
                             <div class="d-flex align-items-center">
                                 <span class="me-2">${line.operation ? line.operation.name : 'Aucune opération sélectionnée'}</span>
-                                ${line.operation ? `<span class="badge bg-secondary category-badge">${line.operation.category}</span>` : ''}
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm mt-1" 
                                     onclick="openOperationSelection(${index})">
                                 <i class="fas fa-search me-1"></i>Choisir une opération
                             </button>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label small">Temps/unité (h) :</label>
-                            <input type="number" class="form-control form-control-sm" 
-                                   value="${line.timePerUnit || (line.operation ? line.operation.average_time_per_unit : 1.0)}" 
-                                   step="0.1" min="0" 
-                                   onchange="updateOperationLine(${index}, 'timePerUnit', parseFloat(this.value))">
-                        </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label small">Quantité :</label>
                             <input type="number" class="form-control form-control-sm" 
-                                   value="${line.quantity || ''}" 
-                                   min="0" 
-                                   placeholder="Auto"
-                                   onchange="updateOperationLine(${index}, 'quantity', parseInt(this.value))"
-                                   title="Laissez vide pour utiliser le nombre total de sièges">
+                                value="${line.quantity || ''}" 
+                                min="0" 
+                                placeholder="Auto"
+                                onchange="updateOperationLine(${index}, 'quantity', parseInt(this.value))"
+                                title="Laissez vide pour utiliser le nombre total de sièges">
                         </div>
                         <div class="col-md-1">
                             <label class="form-label small">&nbsp;</label>
