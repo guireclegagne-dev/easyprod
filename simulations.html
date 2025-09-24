@@ -243,6 +243,7 @@
             }
         }
     </style>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
@@ -518,9 +519,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         // Configuration Supabase
-        const SUPABASE_URL = 'https://your-supabase-url.supabase.co';
-        const SUPABASE_ANON_KEY = 'your-anon-key';
-
+        const SUPABASE_URL = 'https://pekndazxlkxdhfgrdtyq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBla25kYXp4bGt4ZGhmZ3JkdHlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODIzMzcsImV4cCI6MjA3MjQ1ODMzN30.McX9eQpaQ3SJfSTErz1dP0ixJl8tyK__aqyFrStnLvo';
+        
         // Variables globales
         let supabase = null;
         let allOperationsFromDB = [];
@@ -533,14 +534,14 @@
 
         // Opérations par défaut (fallback)
         const defaultOperations = [
-            { id: 1, name: 'Démontage', category: 'Désassemblage', average_time_per_unit: 0.5, unit: 'pièce' },
-            { id: 2, name: 'Nettoyage roulettes', category: 'Nettoyage', average_time_per_unit: 0.3, unit: 'pièce' },
-            { id: 3, name: 'Peinture roulettes', category: 'Rénovation', average_time_per_unit: 0.8, unit: 'pièce' },
-            { id: 4, name: 'Nettoyage structure', category: 'Nettoyage', average_time_per_unit: 0.4, unit: 'pièce' },
-            { id: 5, name: 'Peinture structure', category: 'Rénovation', average_time_per_unit: 1.2, unit: 'pièce' },
-            { id: 6, name: 'Assemblage final', category: 'Assemblage', average_time_per_unit: 0.7, unit: 'pièce' },
-            { id: 7, name: 'Contrôle qualité', category: 'Qualité', average_time_per_unit: 0.2, unit: 'pièce' },
-            { id: 8, name: 'Emballage', category: 'Finition', average_time_per_unit: 0.3, unit: 'pièce' }
+            { id: 1, name: 'Démontage', category: 'Désassemblage', estimated_time: 0.5, unit: 'pièce' },
+            { id: 2, name: 'Nettoyage roulettes', category: 'Nettoyage', estimated_time: 0.3, unit: 'pièce' },
+            { id: 3, name: 'Peinture roulettes', category: 'Rénovation', estimated_time: 0.8, unit: 'pièce' },
+            { id: 4, name: 'Nettoyage structure', category: 'Nettoyage', estimated_time: 0.4, unit: 'pièce' },
+            { id: 5, name: 'Peinture structure', category: 'Rénovation', estimated_time: 1.2, unit: 'pièce' },
+            { id: 6, name: 'Assemblage final', category: 'Assemblage', estimated_time: 0.7, unit: 'pièce' },
+            { id: 7, name: 'Contrôle qualité', category: 'Qualité', estimated_time: 0.2, unit: 'pièce' },
+            { id: 8, name: 'Emballage', category: 'Finition', estimated_time: 0.3, unit: 'pièce' }
         ];
 
         // Initialisation
@@ -552,6 +553,7 @@
         });
 
         async function initializeSupabase() {
+            console.log('Test Supabase:', typeof window.supabase, window.supabase);
             try {
                 if (typeof window.supabase !== 'undefined') {
                     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -715,7 +717,9 @@
 
         function filterOperationsByCategory() {
             const selectedCategory = document.getElementById('categoryFilter').value;
-            
+            console.log('Catégorie sélectionnée:', selectedCategory);
+            console.log('Toutes les opérations:', allOperationsFromDB);
+            console.log('Opérations de cette catégorie:', allOperationsFromDB.filter(op => op.category === selectedCategory));
             if (selectedCategory === '') {
                 filteredOperations = [...allOperationsFromDB];
             } else {
@@ -744,7 +748,7 @@
                         <div>
                             <div class="fw-bold">${operation.name}</div>
                             <small class="text-muted">
-                                ${operation.average_time_per_unit || 1.0}h par ${operation.unit || 'pièce'}
+                                ${operation.estimated_time || 1.0}h par ${operation.unit || 'pièce'}
                             </small>
                         </div>
                         <div>
@@ -777,7 +781,7 @@
             
             // Mettre à jour la ligne d'opération
             operationLines[currentOperationLineIndex].operation = selectedOperationForModal;
-            operationLines[currentOperationLineIndex].timePerUnit = selectedOperationForModal.average_time_per_unit || 1.0;
+            operationLines[currentOperationLineIndex].timePerUnit = selectedOperationForModal.estimated_time || 1.0;
             
             // Fermer la modal
             bootstrap.Modal.getInstance(document.getElementById('operationSelectionModal')).hide();
@@ -829,7 +833,7 @@
                 }
 
                 const quantity = line.quantity || totalSeats; // Utiliser totalSeats si pas de quantité spécifique
-                const timePerUnit = line.timePerUnit || line.operation.average_time_per_unit || 1.0;
+                const timePerUnit = line.timePerUnit || line.operation.estimated_time || 1.0;
                 const hours = timePerUnit * quantity;
                 const cost = hours * hourlyRate;
                 
