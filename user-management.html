@@ -457,6 +457,11 @@
                                     <label class="form-label">Email</label>
                                     <input type="email" class="form-control" id="email" placeholder="email@exemple.fr">
                                 </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Mot de passe temporaire</label>
+                                    <input type="password" class="form-control" id="tempPassword" placeholder="Mot de passe initial" required>
+                                    <small class="text-muted">L'utilisateur pourra le changer à sa première connexion</small>
+                                </div>
                             </div>
                         </div>
 
@@ -468,15 +473,7 @@
                                     <label class="form-label">Poste</label>
                                     <select class="form-control" id="position">
                                         <option value="">Sélectionnez un poste</option>
-                                        <option value="Opérateur Junior">Opérateur Junior</option>
-                                        <option value="Opérateur">Opérateur</option>
-                                        <option value="Opérateur Senior">Opérateur Senior</option>
-                                        <option value="Chef d'Équipe">Chef d'Équipe</option>
-                                        <option value="Superviseur">Superviseur</option>
-                                        <option value="Responsable Production">Responsable Production</option>
-                                        <option value="Technicien Maintenance">Technicien Maintenance</option>
-                                        <option value="Contrôleur Qualité">Contrôleur Qualité</option>
-                                        <option value="Administrateur">Administrateur</option>
+                                        <!-- Les options seront ajoutées dynamiquement -->
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -555,14 +552,14 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
 
         async function initApp() {
             updateConnectionStatus('connecting', 'Connexion...');
-            
+
             // Charger les données d'exemple
             users = [...sampleUsers];
             allUsers = [...users];
             loadUsersList();
             updateStats();
-            
-            // Tenter la connexion Supabase
+
+            // Tenter la connexion Supabase (loadAvailableRoles sera appelé depuis initSupabase)
             await initSupabase();
         }
 
@@ -570,40 +567,133 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
             try {
                 const script = document.createElement('script');
                 script.src = 'https://unpkg.com/@supabase/supabase-js@2';
-                
+        
                 script.onload = async () => {
-                    try {
-                        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                        
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
                         // Test de connexion
                         const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
-                        
+                
                         if (error) throw error;
-                        
+                
                         supabaseLoaded = true;
                         updateConnectionStatus('connected', 'Base de données connectée');
-                        
+                
                         // Charger les vraies données
                         await loadUsersFromDB();
-                        
+                
+                        // Charger les rôles APRÈS que Supabase soit chargé
+                        await loadAvailableRoles();
+                
                     } catch (error) {
                         console.warn('Erreur Supabase:', error);
                         updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                        // Charger les rôles même en mode hors-ligne
+                        await loadAvailableRoles();
                     }
                 };
-                
+        
                 script.onerror = () => {
                     updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                    // Charger les rôles en mode hors-ligne
+                    loadAvailableRoles();
                 };
-                
+        
                 document.head.appendChild(script);
-                
+        
             } catch (error) {
                 console.error('Erreur initialisation Supabase:', error);
                 updateConnectionStatus('disconnected', 'Mode hors-ligne');
+                // Charger les rôles en mode hors-ligne
+                loadAvailableRoles();
             }
         }
+        let availableRoles = [];
 
+async function loadAvailableRoles() {
+    console.log('--- Début loadAvailableRoles ---');
+    console.log('supabaseLoaded:', supabaseLoaded);
+
+    try {
+        if (supabaseLoaded) {
+            console.log('Tentative de récupération des rôles depuis Supabase...');
+            // Récupérer tous les rôles et positions (même si l'un est null)
+            const { data, error } = await supabase
+                .from('users')
+                .select('role, position');
+
+                console.log('Réponse Supabase - data:', data, 'error:', error);
+            
+            if (error) throw error;
+            
+            // Créer un Set pour éviter les doublons
+            const rolesSet = new Set();
+            data.forEach(user => {
+                console.log('Utilisateur traité:', user);
+
+                if (user.role && user.role.trim()) rolesSet.add(user.role.trim());
+                if (user.position && user.position.trim()) rolesSet.add(user.position.trim());
+            });
+            
+            availableRoles = Array.from(rolesSet).sort();
+            console.log('Rôles trouvés dans la base:', availableRoles);
+            
+            // Si aucun rôle trouvé, utiliser les valeurs par défaut
+            if (availableRoles.length === 0) {
+                console.log('Aucun rôle trouvé, utilisation des valeurs par défaut');
+                availableRoles = [
+                    'Opérateur Junior', 'Opérateur', 'Opérateur Senior',
+                    'Chef d\'Équipe', 'Superviseur', 'Responsable Production',
+                    'Technicien Maintenance', 'Contrôleur Qualité', 'Administrateur'
+                ];
+            }
+        } else {
+            console.log('Mode hors-ligne, utilisation des rôles par défaut');
+            // Fallback avec les rôles par défaut
+            availableRoles = [
+                'Opérateur Junior', 'Opérateur', 'Opérateur Senior',
+                'Chef d\'Équipe', 'Superviseur', 'Responsable Production',
+                'Technicien Maintenance', 'Contrôleur Qualité', 'Administrateur'
+            ];
+        }
+        
+        console.log('Rôles finaux avant populateRoleSelect:', availableRoles);
+
+        populateRoleSelect();
+
+        console.log('--- Fin loadAvailableRoles ---');
+
+                
+    } catch (error) {
+        console.error('Erreur chargement des rôles:', error);
+        // Utiliser les valeurs par défaut en cas d'erreur
+        availableRoles = [
+            'Opérateur Junior', 'Opérateur', 'Opérateur Senior',
+            'Chef d\'Équipe', 'Superviseur', 'Responsable Production',
+            'Technicien Maintenance', 'Contrôleur Qualité', 'Administrateur'
+        ];
+        populateRoleSelect();
+    }
+}
+
+function populateRoleSelect() {
+    console.log('populateRoleSelect appelée avec:', availableRoles);
+
+    const select = document.getElementById('position');
+    console.log('Select element trouvé:', select);
+    
+    // Vider le select (garder seulement la première option)
+    select.innerHTML = '<option value="">Sélectionnez un poste</option>';
+    
+    // Ajouter les rôles disponibles
+    availableRoles.forEach(role => {
+        const option = document.createElement('option');
+        option.value = role;
+        option.textContent = role;
+        select.appendChild(option);
+    });
+}
         async function loadUsersFromDB() {
             if (!supabaseLoaded) return;
             
@@ -843,7 +933,10 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
             };
             reader.readAsDataURL(file);
         }
-
+            function hashPassword(password) {
+            // TEMPORAIRE: en production, utilisez bcrypt côté serveur
+            return btoa(password + 'salt_secret_key');
+        }
         async function saveUser(event) {
             event.preventDefault();
             
@@ -857,7 +950,8 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
                 performance_score: parseInt(document.getElementById('performanceScore').value) || 85,
                 birth_date: document.getElementById('birthDate').value || null,
                 is_active: document.getElementById('status').value === 'true',
-                is_admin: document.getElementById('isAdmin').checked
+                is_admin: document.getElementById('isAdmin').checked,
+                password_hash: hashPassword(document.getElementById('tempPassword').value || 'motdepasse123'),
             };
 
             // Validation basique
@@ -914,6 +1008,7 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
 
                 users = [...allUsers];
                 updateStats();
+                await loadAvailableRoles();
                 showUserList();
                 showToast(userId ? 'Profil modifié avec succès' : 'Profil créé avec succès', 'success');
 
