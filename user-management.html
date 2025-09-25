@@ -735,78 +735,91 @@ function populateRoleSelect() {
         }
 
         function loadUsersList() {
-            const container = document.getElementById('usersList');
-            
-            const activeUsers = users.filter(user => user.is_active);
-                if (activeUsers.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                        <h4>Aucun utilisateur trouvé</h4>
-                        <p class="text-muted">Commencez par créer votre premier profil utilisateur.</p>
-                        <button class="btn btn-success" onclick="showCreateUserForm()">
-                            <i class="fas fa-user-plus me-2"></i>Créer le Premier Utilisateur
-                        </button>
-                    </div>
-                `;
-                return;
-            }
+    const container = document.getElementById('usersList');
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    // Appliquer le filtre selon la sélection
+    let displayUsers;
+    if (statusFilter === 'active') {
+        displayUsers = users.filter(user => user.is_active);
+    } else if (statusFilter === 'inactive') {
+        displayUsers = users.filter(user => !user.is_active);
+    } else if (statusFilter === 'admin') {
+        displayUsers = users.filter(user => user.is_admin);
+    } else {
+        // "Tous les statuts" - afficher TOUS les utilisateurs
+        displayUsers = users;
+    }
+    
+    if (displayUsers.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h4>Aucun utilisateur trouvé</h4>
+                <p class="text-muted">Commencez par créer votre premier profil utilisateur.</p>
+                <button class="btn btn-success" onclick="showCreateUserForm()">
+                    <i class="fas fa-user-plus me-2"></i>Créer le Premier Utilisateur
+                </button>
+            </div>
+        `;
+        return;
+    }
 
-            container.innerHTML = activeUsers.map(user => `
-                <div class="user-card" onclick="viewUserStats('${user.id}')">
-                    <div class="d-flex align-items-center">
-                        <div class="user-avatar">
-                            ${user.profile_photo ? 
-                                `<img src="${user.profile_photo}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` :
-                                `${getInitials(user.first_name, user.last_name)}`
-                            }
+    container.innerHTML = displayUsers.map(user => `
+        <div class="user-card" onclick="viewUserStats('${user.id}')">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar">
+                    ${user.profile_photo ? 
+                        `<img src="${user.profile_photo}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` :
+                        `${getInitials(user.first_name, user.last_name)}`
+                    }
+                </div>
+                <div class="user-info flex-grow-1 ms-3">
+                    <h5>${user.first_name || ''} ${user.last_name || user.name || 'Utilisateur'}</h5>
+                    <div class="user-meta">
+                        <i class="fas fa-envelope me-2"></i>${user.email || 'Pas d\'email'}
+                        <span class="ms-3"><i class="fas fa-briefcase me-1"></i>${user.position || user.role || 'Pas de poste'}</span>
+                        ${user.birth_date ? `<span class="ms-3"><i class="fas fa-birthday-cake me-1"></i>${formatDate(user.birth_date)}</span>` : ''}
+                    </div>
+                    <div class="user-badges">
+                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-secondary'}">
+                            ${user.is_active ? 'Actif' : 'Inactif'}
+                        </span>
+                        ${user.is_admin ? '<span class="badge bg-danger">Admin</span>' : ''}
+                        <span class="badge bg-info">${user.hourly_rate || 0}€/h</span>
+                    </div>
+                    <div class="user-stats">
+                        <div class="user-stat">
+                            <div class="user-stat-value">${user.performance_score || 0}%</div>
+                            <div class="user-stat-label">Performance</div>
                         </div>
-                        <div class="user-info flex-grow-1 ms-3">
-                            <h5>${user.first_name || ''} ${user.last_name || user.name || 'Utilisateur'}</h5>
-                            <div class="user-meta">
-                                <i class="fas fa-envelope me-2"></i>${user.email || 'Pas d\'email'}
-                                <span class="ms-3"><i class="fas fa-briefcase me-1"></i>${user.position || user.role || 'Pas de poste'}</span>
-                                ${user.birth_date ? `<span class="ms-3"><i class="fas fa-birthday-cake me-1"></i>${formatDate(user.birth_date)}</span>` : ''}
-                            </div>
-                            <div class="user-badges">
-                                <span class="badge ${user.is_active ? 'bg-success' : 'bg-secondary'}">
-                                    ${user.is_active ? 'Actif' : 'Inactif'}
-                                </span>
-                                ${user.is_admin ? '<span class="badge bg-danger">Admin</span>' : ''}
-                                <span class="badge bg-info">${user.hourly_rate || 0}€/h</span>
-                            </div>
-                            <div class="user-stats">
-                                <div class="user-stat">
-                                    <div class="user-stat-value">${user.performance_score || 0}%</div>
-                                    <div class="user-stat-label">Performance</div>
-                                </div>
-                                <div class="user-stat">
-                                    <div class="user-stat-value">${calculateAge(user.birth_date) || '?'}</div>
-                                    <div class="user-stat-label">Ans</div>
-                                </div>
-                                <div class="user-stat">
-                                    <div class="user-stat-value">${formatDateShort(user.created_at)}</div>
-                                    <div class="user-stat-label">Créé le</div>
-                                </div>
-                            </div>
+                        <div class="user-stat">
+                            <div class="user-stat-value">${calculateAge(user.birth_date) || '?'}</div>
+                            <div class="user-stat-label">Ans</div>
                         </div>
-                        <div class="user-actions" onclick="event.stopPropagation()">
-                            <button class="btn btn-outline-primary btn-sm" onclick="editUser('${user.id}')" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-${user.is_active ? 'warning' : 'success'} btn-sm" 
-                                    onclick="toggleUserStatus('${user.id}')" 
-                                    title="${user.is_active ? 'Désactiver' : 'Activer'}">
-                                <i class="fas fa-${user.is_active ? 'pause' : 'play'}"></i>
-                            </button>
-                            ${!user.is_admin ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteUser('${user.id}')" title="Supprimer">
-                                <i class="fas fa-trash"></i>
-                            </button>` : ''}
+                        <div class="user-stat">
+                            <div class="user-stat-value">${formatDateShort(user.created_at)}</div>
+                            <div class="user-stat-label">Créé le</div>
                         </div>
                     </div>
                 </div>
-            `).join('');
-        }
+                <div class="user-actions" onclick="event.stopPropagation()">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editUser('${user.id}')" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-${user.is_active ? 'warning' : 'success'} btn-sm" 
+                            onclick="toggleUserStatus('${user.id}')" 
+                            title="${user.is_active ? 'Désactiver' : 'Activer'}">
+                        <i class="fas fa-${user.is_active ? 'pause' : 'play'}"></i>
+                    </button>
+                    ${!user.is_admin ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteUser('${user.id}')" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
 
         function getInitials(firstName, lastName) {
             const first = firstName ? firstName.charAt(0).toUpperCase() : '';
