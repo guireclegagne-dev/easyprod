@@ -403,7 +403,7 @@
                             <p class="text-muted mb-3">
                                 Export Odoo <strong>COMMANDES CONFIRMÉES uniquement</strong><br>
                             <small>
-                                    ✓ Colonnes requises : Référence commande, Date de la commande, Site Web, Client, Vendeur, Activités, Total, État de la facture<br>
+                                    ✓ Colonnes requises (7) : Référence commande, Date de la commande, Client, Vendeur, Activités, Total, État de la facture<br>
                                     ✗ Les fichiers de DEVIS seront automatiquement rejetés
                             </small>
                             </p>
@@ -582,11 +582,11 @@
                 if (!supabase) return;
 
                 const { data: unassignedCommands, error } = await supabase
-                    .from('commandes_odoo')
-                    .select('*')
-                    .is('project_id', null)
-                    .neq('etat_facture', 'CLÔTURÉ')  // Ajouter cette ligne
-                    .order('created_at', { ascending: false });
+                        .from('commandes_odoo')
+                        .select('*')
+                        .is('project_id', null)
+                        .or('etat_facture.is.null,etat_facture.neq.CLÔTURÉ')  // ✓ Inclut les NULL
+                        .order('created_at', { ascending: false });
                 if (error) {
                     console.error('Erreur chargement commandes non affectées:', error);
                     return;
@@ -678,24 +678,32 @@ function validateFileStructure(data) {
 
     const headers = data[0];
     
-    // Validation 1 : Vérifier le nombre de colonnes
-    if (headers.length !== 8) {
+    // VALIDATION CRITIQUE #1 : "Date de la commande" doit être présente
+    // C'est le meilleur différenciant entre commandes et devis
+    if (!headers.includes('Date de la commande')) {
         return { 
             isValid: false, 
-            error: `Structure incorrecte : ${headers.length} colonnes trouvées, 8 attendues pour les commandes` 
+            error: `⚠️ FICHIER DE DEVIS DÉTECTÉ !\n\nColonne "Date de la commande" absente.\nLes devis utilisent "Date de création" à la place.\n\nVeuillez utiliser l'export des COMMANDES CONFIRMÉES uniquement.` 
         };
     }
     
-    // Validation 2 : Vérifier les colonnes spécifiques aux commandes
+    // VALIDATION #2 : Vérifier le nombre de colonnes (7 depuis la mise à jour Odoo)
+    if (headers.length !== 7) {
+        return { 
+            isValid: false, 
+            error: `Structure incorrecte : ${headers.length} colonnes trouvées, 7 attendues pour les commandes\n\nColonnes détectées : ${headers.join(', ')}` 
+        };
+    }
+    
+    // VALIDATION #3 : Vérifier les colonnes spécifiques aux commandes dans l'ordre exact
     const requiredColumns = [
         'Référence commande',
-        'Date de la commande',    // Pas "Date de création" !
-        'Site Web',               // Absent des devis
+        'Date de la commande',    // Colonne clé qui différencie des devis
         'Client',
         'Vendeur', 
         'Activités',
         'Total',
-        'État de la facture'      // Pas juste "État" !
+        'État de la facture'
     ];
     
     for (let i = 0; i < requiredColumns.length; i++) {
@@ -707,9 +715,9 @@ function validateFileStructure(data) {
         }
     }
     
-    // Validation 3 : Vérifier les états (critère principal)
+    // VALIDATION #4 : Vérifier les états (critère secondaire)
     const rows = data.slice(1).filter(row => row[0] && row[0].startsWith('S'));
-    const etats = [...new Set(rows.map(row => row[7]).filter(x => x))];
+    const etats = [...new Set(rows.map(row => row[6]).filter(x => x))]; // Index 6 pour "État de la facture"
     
     const etatsCommandes = ['Rien à facturer', 'À facturer', 'Entièrement facturé'];
     const etatsDevis = ['Bon de commande', 'Devis envoyé', 'Devis', 'Annulé'];
@@ -731,15 +739,7 @@ function validateFileStructure(data) {
         };
     }
     
-    // Validation 4 : Vérifier la présence de la colonne "Site Web" (absente des devis)
-    if (!headers.includes('Site Web')) {
-        return { 
-            isValid: false, 
-            error: 'Colonne "Site Web" manquante - ceci ressemble à un export de devis, pas de commandes' 
-        };
-    }
-    
-    // Validation 5 : Détecter les colonnes de devis
+    // VALIDATION #5 : Détecter les colonnes typiques des devis
     const devisColumns = ['Étiquettes', 'Montant HT', 'Date de création'];
     const hasDevisColumns = devisColumns.some(col => headers.includes(col));
     
@@ -848,12 +848,11 @@ function validateFileStructure(data) {
             const commands = data.slice(1).map(row => ({
                 reference: row[0],
                 date_commande: row[1],
-                site_web: row[2],
-                client: row[3],
-                vendeur: row[4],
-                activites: row[5],
-                total_ttc: parseFloat(row[6]) || 0,
-                etat_facture: row[7]
+                client: row[2],           // ✓ Corrigé : Index 2
+                vendeur: row[3],          // ✓ Corrigé : Index 3
+                activites: row[4],        // ✓ Corrigé : Index 4
+                total_ttc: parseFloat(row[5]) || 0,  // ✓ Corrigé : Index 5
+                etat_facture: row[6]      // ✓ Corrigé : Index 6
             })).filter(cmd => cmd.reference && cmd.reference.startsWith('S'));
 
             if (commands.length === 0) {
