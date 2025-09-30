@@ -408,16 +408,159 @@
             justify-content: flex-end;
             gap: 10px;
         }
-    </style>
-</head>
-<body>
-    <div class="connection-status connecting" id="connectionStatus">
-        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
-    </div>
+        /* Modal des alertes détaillées */
+        .alerts-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
 
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="#">
+        .alerts-modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .alerts-modal-header {
+            background: var(--warning-color);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alerts-modal-body {
+            padding: 25px;
+        }
+
+        .alert-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .alert-item.critical {
+            border-left: 4px solid var(--danger-color);
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        .alert-item.warning {
+            border-left: 4px solid var(--warning-color);
+            background: rgba(243, 156, 18, 0.05);
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .alert-title {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .alert-time {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .alert-description {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .alert-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .alert-type-badge.blocked-task {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+        }
+
+        .alert-type-badge.idle-operator {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning-color);
+        }
+
+        .empty-alerts {
+            text-align: center;
+            padding: 40px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-alerts i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: var(--success-color);
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .close-modal-btn:hover {
+            opacity: 1;
+        }
+
+        /* Rendre la card alertes cliquable */
+        .stat-card.alerts {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card.alerts:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.3);
+        }
+            </style>
+        </head>
+        <body>
+            <div class="connection-status connecting" id="connectionStatus">
+                <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+            </div>
+
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <div class="container-fluid">
+                    <a class="navbar-brand fw-bold" href="#">
                 <i class="fas fa-shield-alt me-2"></i>
                 EasyProd by Luceleanne - Console Administrateur
             </a>
@@ -461,11 +604,11 @@
                     <li><a class="menu-item" href="import-donnees.html">
                     <i class="fas fa-download me-2"></i> Imports
                     </a></li>
+                    <li><a class="menu-item" href="gestion-commandes-odoo.html">
+                    <i class="fas fa-file-invoice me-2"></i> Gestion Commandes Odoo
+                    </a></li>
                     <li><a class="menu-item" href="ecran-1-seulement.html">
                     <i class="fas fa-hand me-2"></i> Pupitre opérateur
-                    </a></li>
-                    <li><a class="menu-item" href="simulations.html">
-                    <i class="fas fa-calculator me-2"></i> Simulations
                     </a></li>
                     <li><a class="menu-item" onclick="showSection('debug')">
                         <i class="fas fa-bug me-2"></i> Debug DB
@@ -827,6 +970,7 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
             updateOperationsStats();
             updateAlertsStats();
             updateProjectsStats();
+            makeAlertsCardClickable();
         }
 
         function updateUsersStats() {
@@ -849,34 +993,35 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
 }
 
         function updateAlertsStats() {
-            let alertsCount = 0;
-            const now = new Date();
-            const sevenHoursAgo = new Date(now.getTime() - (7 * 60 * 60 * 1000));
+    let alertsCount = 0;
+    const now = new Date();
+    const sevenHoursAgo = new Date(now.getTime() - (7 * 60 * 60 * 1000));
 
-            // 1. Tâches in_progress depuis plus de 7h
-            const longRunningTasks = tasks.filter(task => {
-                if (task.status !== 'in_progress') return false;
-                
-                // Vérifier si la tâche a été mise à jour il y a plus de 7h
-                const taskDate = new Date(task.updated_at || task.created_at);
-                return taskDate < sevenHoursAgo;
-            });
+    // 1. Tâches bloquées depuis plus de 7h
+    const longRunningTasks = tasks.filter(task => {
+        if (task.status !== 'in_progress') return false;
+        
+        const taskDate = new Date(task.updated_at || task.created_at);
+        return taskDate < sevenHoursAgo;
+    });
 
-            alertsCount += longRunningTasks.length;
+    alertsCount += longRunningTasks.length;
 
-            // 2. Opérateurs actifs non affectés à des tâches
-            const activeUsers = users.filter(user => user.is_active && !user.is_admin);
-            const usersWithTasks = new Set(tasks
-                .filter(task => task.status === 'in_progress' && task.assigned_to)
-                .map(task => task.assigned_to)
-            );
+    // 2. Opérateurs actifs non affectés à des tâches
+    const activeUsers = users.filter(user => user.is_active && !user.is_admin);
+    const usersWithTasks = new Set(tasks
+        .filter(task => task.status === 'in_progress' && task.assigned_to)
+        .map(task => task.assigned_to)
+    );
 
-            const unassignedActiveUsers = activeUsers.filter(user => !usersWithTasks.has(user.id));
-            alertsCount += unassignedActiveUsers.length;
+    const unassignedActiveUsers = activeUsers.filter(user => !usersWithTasks.has(user.id));
+    alertsCount += unassignedActiveUsers.length;
 
-            document.getElementById('activeAlerts').textContent = alertsCount;
-        }
-
+    document.getElementById('activeAlerts').textContent = alertsCount;
+    
+    // Rendre la card cliquable
+    makeAlertsCardClickable();
+}
         function updateProjectsStats() {
             const activeProjectsCount = projects.filter(p => p.status === 'active' || !p.status).length;
             document.getElementById('activeProjects').textContent = activeProjectsCount;
@@ -1273,62 +1418,93 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
         }
 
         async function deleteProject(projectId) {
-            const project = projects.find(p => p.id === projectId);
-            if (!project) {
-                showToast('Projet introuvable', 'error');
-                return;
-            }
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        showToast('Projet introuvable', 'error');
+        return;
+    }
 
-            // Confirmation avec le nom du projet
-            const confirmMessage = `Supprimer définitivement le projet "${project.name}" ?\n\nCette action est irréversible et supprimera toutes les données associées.`;
+    // Confirmation avec le nom du projet
+    const confirmMessage = `Supprimer définitivement le projet "${project.name}" ?\n\nCette action est irréversible et supprimera :\n- Les détails du projet\n- Les associations avec les tâches\n- Les associations avec les commandes`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        if (supabaseLoaded) {
+            // 1. Supprimer d'abord les project_details (c'est ça qui bloquait!)
+            const { error: detailsError } = await supabase
+                .from('project_details')
+                .delete()
+                .eq('project_id', projectId);
             
-            if (!confirm(confirmMessage)) {
-                return;
+            if (detailsError) {
+                console.warn('Note: Erreur suppression project_details:', detailsError.message);
+                // On continue quand même car peut-être qu'il n'y a pas de project_details
             }
-
-            try {
-                if (supabaseLoaded) {
-                    // Supprimer de la base de données
-                    const { error } = await supabase
-                        .from('projects')
-                        .delete()
-                        .eq('id', projectId);
-
-                    if (error) throw error;
-                    
-                    console.log(`Projet ${projectId} supprimé de la base de données`);
-                } else {
-                    // Mode hors-ligne - marquer comme supprimé
-                    console.log(`Mode hors-ligne: Projet ${projectId} marqué pour suppression`);
-                }
-
-                // Retirer de la liste locale
-                const originalLength = projects.length;
-                projects = projects.filter(p => p.id !== projectId);
-                
-                if (projects.length < originalLength) {
-                    updateProjectsDisplay();
-                    updateProjectsStats();
-                    showToast(`Projet "${project.name}" supprimé avec succès`, 'success');
-                } else {
-                    showToast('Erreur lors de la suppression locale', 'danger');
-                }
-
-            } catch (error) {
-                console.error('Erreur suppression projet:', error);
-                
-                let errorMessage = 'Erreur lors de la suppression du projet';
-                if (error.message.includes('foreign key')) {
-                    errorMessage = 'Impossible de supprimer : le projet est lié à d\'autres données';
-                } else if (error.message.includes('permission')) {
-                    errorMessage = 'Permissions insuffisantes pour supprimer ce projet';
-                } else {
-                    errorMessage = `Erreur: ${error.message}`;
-                }
-                
-                showToast(errorMessage, 'danger');
+            
+            // 2. Retirer les associations des tâches (mettre project_id à null)
+            const { error: tasksError } = await supabase
+                .from('tasks')
+                .update({ project_id: null })
+                .eq('project_id', projectId);
+            
+            if (tasksError) {
+                console.warn('Note: Erreur mise à jour tasks:', tasksError.message);
             }
+            
+            // 3. Retirer les associations des commandes Odoo
+            const { error: commandesError } = await supabase
+                .from('commandes_odoo')
+                .update({ project_id: null })
+                .eq('project_id', projectId);
+            
+            if (commandesError) {
+                console.warn('Note: Erreur mise à jour commandes:', commandesError.message);
+            }
+            
+            // 4. Enfin supprimer le projet lui-même
+            const { error } = await supabase
+                .from('projects')
+                .delete()
+                .eq('id', projectId);
+
+            if (error) throw error;
+            
+            console.log(`Projet ${projectId} supprimé avec succès de la base de données`);
+        } else {
+            // Mode hors-ligne - marquer comme supprimé
+            console.log(`Mode hors-ligne: Projet ${projectId} marqué pour suppression`);
         }
+
+        // Retirer de la liste locale
+        const originalLength = projects.length;
+        projects = projects.filter(p => p.id !== projectId);
+        
+        if (projects.length < originalLength) {
+            updateProjectsDisplay();
+            updateProjectsStats();
+            showToast(`Projet "${project.name}" supprimé avec succès`, 'success');
+        } else {
+            showToast('Erreur lors de la suppression locale', 'danger');
+        }
+
+    } catch (error) {
+        console.error('Erreur suppression projet:', error);
+        
+        let errorMessage = 'Erreur lors de la suppression du projet';
+        if (error.message.includes('foreign key')) {
+            errorMessage = 'Impossible de supprimer : le projet est encore lié à d\'autres données. Contactez le support.';
+        } else if (error.message.includes('permission')) {
+            errorMessage = 'Permissions insuffisantes pour supprimer ce projet';
+        } else {
+            errorMessage = `Erreur: ${error.message}`;
+        }
+        
+        showToast(errorMessage, 'danger');
+    }
+}
 
         // Navigation
         function showSection(sectionId) {
@@ -1696,11 +1872,266 @@ CREATE TRIGGER update_end_users_updated_at
                 loadProjectsFromDB();
             }
         }, 15000);
+        // Variables pour stocker les détails des alertes
+let currentAlerts = [];
 
+// Modifier la card alertes pour la rendre cliquable
+function makeAlertsCardClickable() {
+    const alertsCard = document.querySelector('.stat-card.alerts');
+    if (alertsCard) {
+        alertsCard.addEventListener('click', openAlertsModal);
+        alertsCard.style.cursor = 'pointer';
+    }
+}
+
+// Ouvrir la modal des alertes
+function openAlertsModal() {
+    const modal = document.getElementById('alertsModal');
+    modal.style.display = 'flex';
+    loadDetailedAlerts();
+}
+
+// Fermer la modal des alertes
+function closeAlertsModal() {
+    const modal = document.getElementById('alertsModal');
+    modal.style.display = 'none';
+}
+
+// Charger les alertes détaillées
+function loadDetailedAlerts() {
+    const content = document.getElementById('alertsModalContent');
+    content.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i> Analyse des alertes...</div>';
+    
+    setTimeout(() => {
+        currentAlerts = generateDetailedAlerts();
+        displayDetailedAlerts();
+    }, 500);
+}
+
+// Générer les alertes détaillées
+function generateDetailedAlerts() {
+    const alerts = [];
+    const now = new Date();
+    const sevenHoursAgo = new Date(now.getTime() - (7 * 60 * 60 * 1000));
+
+    // 1. Tâches bloquées depuis plus de 7h
+    const longRunningTasks = tasks.filter(task => {
+        if (task.status !== 'in_progress') return false;
+        const taskDate = new Date(task.updated_at || task.created_at);
+        return taskDate < sevenHoursAgo;
+    });
+
+    longRunningTasks.forEach(task => {
+        const taskDate = new Date(task.updated_at || task.created_at);
+        const hoursStuck = Math.floor((now - taskDate) / (1000 * 60 * 60));
+        
+        alerts.push({
+            id: `task-${task.id}`,
+            type: 'blocked-task',
+            severity: hoursStuck > 12 ? 'critical' : 'warning',
+            title: `Tâche bloquée : ${task.title}`,
+            description: `Cette tâche est en cours depuis ${hoursStuck}h sans mise à jour. Elle pourrait nécessiter une intervention.`,
+            time: taskDate,
+            actions: [
+                {
+                    label: 'Voir la tâche',
+                    action: () => viewTask(task.id),
+                    class: 'btn btn-primary btn-sm'
+                },
+                {
+                    label: 'Contacter opérateur',
+                    action: () => contactOperator(task.assigned_to),
+                    class: 'btn btn-outline-warning btn-sm'
+                }
+            ],
+            data: task
+        });
+    });
+
+    // 2. Opérateurs actifs non affectés
+    const activeUsers = users.filter(user => user.is_active && !user.is_admin);
+    const usersWithTasks = new Set(tasks
+        .filter(task => task.status === 'in_progress' && task.assigned_to)
+        .map(task => task.assigned_to)
+    );
+
+    const unassignedActiveUsers = activeUsers.filter(user => !usersWithTasks.has(user.id));
+
+    unassignedActiveUsers.forEach(user => {
+        alerts.push({
+            id: `user-${user.id}`,
+            type: 'idle-operator',
+            severity: 'warning',
+            title: `Opérateur disponible : ${getUserDisplayName(user)}`,
+            description: `Cet opérateur est actif mais n'est assigné à aucune tâche en cours. Il pourrait être affecté à de nouvelles missions.`,
+            time: new Date(user.updated_at || user.created_at),
+            actions: [
+                {
+                    label: 'Assigner une tâche',
+                    action: () => assignTask(user.id),
+                    class: 'btn btn-success btn-sm'
+                },
+                {
+                    label: 'Voir profil',
+                    action: () => viewUserProfile(user.id),
+                    class: 'btn btn-outline-primary btn-sm'
+                }
+            ],
+            data: user
+        });
+    });
+
+    // Trier par sévérité puis par ancienneté
+    return alerts.sort((a, b) => {
+        if (a.severity === 'critical' && b.severity !== 'critical') return -1;
+        if (b.severity === 'critical' && a.severity !== 'critical') return 1;
+        return new Date(a.time) - new Date(b.time);
+    });
+}
+
+// Afficher les alertes détaillées
+function displayDetailedAlerts() {
+    const content = document.getElementById('alertsModalContent');
+    
+    if (currentAlerts.length === 0) {
+        content.innerHTML = `
+            <div class="empty-alerts">
+                <i class="fas fa-check-circle"></i>
+                <h5>Aucune alerte active</h5>
+                <p class="text-muted">Toutes les opérations se déroulent normalement.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const alertsHtml = currentAlerts.map(alert => `
+        <div class="alert-item ${alert.severity}">
+            <div class="alert-header">
+                <h6 class="alert-title">${alert.title}</h6>
+                <div class="d-flex align-items-center">
+                    <span class="alert-type-badge ${alert.type}">
+                        ${alert.type === 'blocked-task' ? 'Tâche bloquée' : 'Opérateur libre'}
+                    </span>
+                    <span class="alert-time ms-2">
+                        <i class="fas fa-clock me-1"></i>
+                        ${formatAlertTime(alert.time)}
+                    </span>
+                </div>
+            </div>
+            <div class="alert-description">
+                ${alert.description}
+            </div>
+            <div class="alert-actions">
+                ${alert.actions.map(action => `
+                    <button class="${action.class}" onclick="handleAlertAction('${alert.id}', '${action.label}')">
+                        ${action.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    content.innerHTML = `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <span><strong>${currentAlerts.length}</strong> alerte(s) active(s)</span>
+                <button class="btn btn-outline-primary btn-sm" onclick="loadDetailedAlerts()">
+                    <i class="fas fa-sync me-1"></i> Actualiser
+                </button>
+            </div>
+        </div>
+        ${alertsHtml}
+    `;
+}
+
+// Formater le temps pour les alertes
+function formatAlertTime(date) {
+    const now = new Date();
+    const diff = now - new Date(date);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+        return `il y a ${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
+    } else {
+        return `il y a ${minutes}m`;
+    }
+}
+
+// Gérer les actions des alertes
+function handleAlertAction(alertId, actionLabel) {
+    const alert = currentAlerts.find(a => a.id === alertId);
+    if (!alert) return;
+    
+    const action = alert.actions.find(a => a.label === actionLabel);
+    if (action && action.action) {
+        action.action();
+    }
+}
+
+// Fonctions d'action
+function viewTask(taskId) {
+    showToast(`Ouverture de la tâche ${taskId}`, 'info');
+}
+
+function contactOperator(userId) {
+    const user = users.find(u => u.id === userId);
+    if (user) {
+        showToast(`Contact avec ${getUserDisplayName(user)}`, 'info');
+    }
+}
+
+function assignTask(userId) {
+    const user = users.find(u => u.id === userId);
+    if (user) {
+        showToast(`Assignment de tâche pour ${getUserDisplayName(user)}`, 'success');
+    }
+}
+
+function viewUserProfile(userId) {
+    showToast(`Ouverture du profil utilisateur ${userId}`, 'info');
+}
+
+// Fermer la modal en cliquant à l'extérieur
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('alertsModal');
+    if (event.target === modal) {
+        closeAlertsModal();
+    }
+});
+
+// Fermer avec la touche Échap
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('alertsModal');
+        if (modal.style.display === 'flex') {
+            closeAlertsModal();
+        }
+    }
+});
         console.log('Console administrateur initialisée avec métriques temps réel');
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Modal des alertes détaillées -->
+<div class="alerts-modal" id="alertsModal">
+    <div class="alerts-modal-content">
+        <div class="alerts-modal-header">
+            <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Détail des Alertes Actives
+            </h5>
+            <button class="close-modal-btn" onclick="closeAlertsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="alerts-modal-body">
+            <div id="alertsModalContent">
+                <div class="text-center py-3">
+                    <i class="fas fa-spinner fa-spin me-2"></i> Chargement des alertes...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
-
 </html>
-
