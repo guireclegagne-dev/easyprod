@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Commandes Odoo - EasyProd by Luceleanne</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .main-container {
+            margin: 20px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 1400px;
+        }
+
+        .filters-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .table-modern {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .table-modern thead {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+            transform: translateX(2px);
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            margin: 0 2px;
+        }
+
+        .badge-projet {
+            background: linear-gradient(135deg, var(--info-color), #48c9db);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .badge-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .modal-header {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .connection-status.connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-box.primary {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(52, 152, 219, 0.05));
+        }
+
+        .stat-box.success {
+            border-color: var(--success-color);
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(39, 174, 96, 0.05));
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .history-timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .history-timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+
+        .history-item {
+            position: relative;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid var(--secondary-color);
+        }
+
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: -23px;
+            top: 20px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            border: 2px solid white;
+        }
+
+        .history-date {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .history-change {
+            font-size: 0.95em;
+            color: var(--primary-color);
+        }
+
+        .history-user {
+            font-size: 0.85em;
+            color: #6c757d;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-state i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .btn-filter {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .btn-filter:hover {
+            background: #2980b9;
+            color: white;
+        }
+
+        .btn-reset {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .btn-reset:hover {
+            background: #7f8c8d;
+            color: white;
+        }
+
+        .reference-cell {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .amount-cell {
+            font-weight: 600;
+            color: var(--success-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status connecting" id="connectionStatus">
+        <i class="fas fa-spinner fa-spin me-1"></i> Connexion...
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="console-admin-standalone.html">
+                <i class="fas fa-arrow-left me-2"></i>
+                EasyProd - Gestion Commandes Odoo
+            </a>
+            <button class="btn btn-outline-light btn-sm" onclick="window.location.href='console-admin-standalone.html'">
+                <i class="fas fa-home me-1"></i> Retour Console
+            </button>
+        </div>
+    </nav>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+            <h5>Chargement en cours...</h5>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-file-invoice me-2"></i> Gestion des Commandes Odoo</h2>
+            <button class="btn btn-success" onclick="refreshData()">
+                <i class="fas fa-sync me-1"></i> Actualiser
+            </button>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="stats-row">
+            <div class="stat-box primary">
+                <div class="stat-value" id="totalCommands">0</div>
+                <div class="stat-label">Commandes totales</div>
+            </div>
+            <div class="stat-box success">
+                <div class="stat-value" id="assignedCommands">0</div>
+                <div class="stat-label">Affectées à des projets</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="unassignedCommands">0</div>
+                <div class="stat-label">Non affectées</div>
+            </div>
+        </div>
+
+        <!-- Filtres -->
+        <div class="filters-card">
+            <h5 class="mb-3"><i class="fas fa-filter me-2"></i> Filtres de recherche</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Recherche globale</label>
+                        <input type="text" class="form-control" id="searchGlobal" 
+                               placeholder="Référence, client...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Client final</label>
+                        <select class="form-select" id="filterClient">
+                            <option value="">Tous les clients</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Projet</label>
+                        <select class="form-select" id="filterProject">
+                            <option value="">Tous les projets</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Revendeur</label>
+                        <select class="form-select" id="filterRevendeur">
+                            <option value="">Tous les revendeurs</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Date de début</label>
+                        <input type="date" class="form-control" id="filterDateStart">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <label>Date de fin</label>
+                        <input type="date" class="form-control" id="filterDateEnd">
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-filter me-2" onclick="applyFilters()">
+                        <i class="fas fa-search me-1"></i> Rechercher
+                    </button>
+                    <button class="btn btn-reset" onclick="resetFilters()">
+                        <i class="fas fa-times me-1"></i> Réinitialiser
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableau des commandes -->
+        <div class="table-responsive">
+            <table class="table table-modern table-hover">
+                <thead>
+                    <tr>
+                        <th>Référence</th>
+                        <th>Date</th>
+                        <th>Client</th>
+                        <th>Revendeur</th>
+                        <th>Projet</th>
+                        <th>Montant TTC</th>
+                        <th>État facture</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="commandsTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Chargement des commandes...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <h4>Aucune commande trouvée</h4>
+            <p>Aucune commande ne correspond à vos critères de recherche.</p>
+        </div>
+    </div>
+
+    <!-- Modal d'édition -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i> Modifier la commande <span id="editCommandRef"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editCommandId">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Client final</label>
+                            <select class="form-select" id="editClientFinal">
+                                <option value="">Aucun client</option>
+                            </select>
+                            <small class="text-muted">Sélectionnez le client final de la commande</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Revendeur</label>
+                            <input type="text" class="form-control" id="editRevendeur" 
+                                   placeholder="Nom du revendeur">
+                            <small class="text-muted">Saisissez le nom du revendeur</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Projet</label>
+                            <select class="form-select" id="editProject">
+                                <option value="">Aucun projet</option>
+                            </select>
+                            <small class="text-muted">Affectez la commande à un projet</small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Toutes les modifications seront enregistrées dans l'historique.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Annuler
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveChanges()">
+                        <i class="fas fa-save me-1"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal historique -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history me-2"></i> Historique des modifications - <span id="historyCommandRef"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="historyContent">
+                        <div class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Chargement de l'historique...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+        const SUPABASE_URL = CONFIG.SUPABASE.URL;
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
+
+        let supabase;
+        let allCommands = [];
+        let filteredCommands = [];
+        let endUsers = [];
+        let projects = [];
+        let revendeurs = new Set();
+        let editModalInstance;
+        let historyModalInstance;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                updateConnectionStatus('connected', 'Connecté');
+                
+                editModalInstance = new bootstrap.Modal(document.getElementById('editModal'));
+                historyModalInstance = new bootstrap.Modal(document.getElementById('historyModal'));
+                
+                await loadAllData();
+            } catch (error) {
+                console.error('Erreur initialisation:', error);
+                updateConnectionStatus('disconnected', 'Erreur de connexion');
+                showToast('Erreur de connexion à la base de données', 'danger');
+            }
+        });
+
+        async function loadAllData() {
+            showLoading(true);
+            try {
+                await Promise.all([
+                    loadCommands(),
+                    loadEndUsers(),
+                    loadProjects()
+                ]);
+                populateFilters();
+                displayCommands();
+                updateStats();
+            } catch (error) {
+                console.error('Erreur chargement données:', error);
+                showToast('Erreur lors du chargement des données', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadCommands() {
+            const { data, error } = await supabase
+                .from('commandes_odoo')
+                .select('*')
+                .order('date_commande', { ascending: false });
+
+            if (error) {
+                console.error('Erreur chargement commandes:', error);
+                throw error;
+            }
+
+            allCommands = data || [];
+            filteredCommands = [...allCommands];
+            
+            // Extraire les revendeurs uniques
+            revendeurs = new Set(allCommands
+                .filter(cmd => cmd.vendeur)
+                .map(cmd => cmd.vendeur));
+        }
+
+        async function loadEndUsers() {
+            const { data, error } = await supabase
+                .from('end_users')
+                .select('*')
+                .order('company_name');
+
+            if (error) {
+                console.error('Erreur chargement clients:', error);
+                endUsers = [];
+            } else {
+                endUsers = data || [];
+            }
+        }
+
+        async function loadProjects() {
+            const { data, error } = await supabase
+                .from('projects')
+                .select('*')
+                .order('name');
+
+            if (error) {
+                console.error('Erreur chargement projets:', error);
+                projects = [];
+            } else {
+                projects = data || [];
+            }
+        }
+
+        function populateFilters() {
+            // Filtrer clients
+            const clientSelect = document.getElementById('filterClient');
+            clientSelect.innerHTML = '<option value="">Tous les clients</option>';
+            endUsers.forEach(user => {
+                clientSelect.innerHTML += `<option value="${user.id}">${user.company_name}</option>`;
+            });
+
+            // Filtrer projets
+            const projectSelect = document.getElementById('filterProject');
+            projectSelect.innerHTML = '<option value="">Tous les projets</option>';
+            projects.forEach(project => {
+                projectSelect.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+            });
+
+            // Filtrer revendeurs
+            const revendeurSelect = document.getElementById('filterRevendeur');
+            revendeurSelect.innerHTML = '<option value="">Tous les revendeurs</option>';
+            Array.from(revendeurs).sort().forEach(revendeur => {
+                revendeurSelect.innerHTML += `<option value="${revendeur}">${revendeur}</option>`;
+            });
+        }
+
+        function applyFilters() {
+            const searchGlobal = document.getElementById('searchGlobal').value.toLowerCase();
+            const filterClient = document.getElementById('filterClient').value;
+            const filterProject = document.getElementById('filterProject').value;
+            const filterRevendeur = document.getElementById('filterRevendeur').value;
+            const filterDateStart = document.getElementById('filterDateStart').value;
+            const filterDateEnd = document.getElementById('filterDateEnd').value;
+
+            filteredCommands = allCommands.filter(cmd => {
+                // Recherche globale
+                if (searchGlobal) {
+                    const searchFields = [
+                        cmd.reference,
+                        cmd.client,
+                        cmd.vendeur
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    
+                    if (!searchFields.includes(searchGlobal)) return false;
+                }
+
+                // Filtre client
+                if (filterClient && cmd.client_final_id != filterClient) return false;
+
+                // Filtre projet
+                if (filterProject && cmd.project_id != filterProject) return false;
+
+                // Filtre revendeur
+                if (filterRevendeur && cmd.vendeur !== filterRevendeur) return false;
+
+                // Filtre dates
+                if (filterDateStart && cmd.date_commande < filterDateStart) return false;
+                if (filterDateEnd && cmd.date_commande > filterDateEnd) return false;
+
+                return true;
+            });
+
+            displayCommands();
+            updateStats();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchGlobal').value = '';
+            document.getElementById('filterClient').value = '';
+            document.getElementById('filterProject').value = '';
+            document.getElementById('filterRevendeur').value = '';
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            
+            filteredCommands = [...allCommands];
+            displayCommands();
+            updateStats();
+        }
+
+        function displayCommands() {
+            const tbody = document.getElementById('commandsTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (filteredCommands.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            tbody.innerHTML = filteredCommands.map(cmd => {
+                const project = projects.find(p => p.id === cmd.project_id);
+                const client = endUsers.find(u => u.id === cmd.client_final_id);
+
+                return `
+                    <tr>
+                        <td class="reference-cell">${cmd.reference || '-'}</td>
+                        <td>${formatDate(cmd.date_commande)}</td>
+                        <td>
+                            ${client ? `<strong>${client.company_name}</strong>` : (cmd.client || '-')}
+                        </td>
+                        <td>${cmd.vendeur || '-'}</td>
+                        <td>
+                            ${project ? `<span class="badge badge-projet">${project.name}</span>` : '-'}
+                        </td>
+                        <td class="amount-cell">${formatCurrency(cmd.total_ttc)}</td>
+                        <td>
+                            <span class="badge badge-status bg-${getStatusColor(cmd.etat_facture)}">
+                                ${cmd.etat_facture || 'N/A'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-action" onclick="openEditModal(${cmd.id})" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-info btn-action" onclick="openHistoryModal(${cmd.id})" title="Historique">
+                                <i class="fas fa-history"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalCommands').textContent = allCommands.length;
+            document.getElementById('assignedCommands').textContent = 
+                allCommands.filter(cmd => cmd.project_id).length;
+            document.getElementById('unassignedCommands').textContent = 
+                allCommands.filter(cmd => !cmd.project_id).length;
+        }
+
+        async function openEditModal(commandId) {
+            const command = allCommands.find(cmd => cmd.id === commandId);
+            if (!command) return;
+
+            document.getElementById('editCommandId').value = commandId;
+            document.getElementById('editCommandRef').textContent = command.reference;
+
+            // Remplir les selects
+            const clientSelect = document.getElementById('editClientFinal');
+            clientSelect.innerHTML = '<option value="">Aucun client</option>';
+            endUsers.forEach(user => {
+                const selected = user.id === command.client_final_id ? 'selected' : '';
+                clientSelect.innerHTML += `<option value="${user.id}" ${selected}>${user.company_name}</option>`;
+            });
+
+            document.getElementById('editRevendeur').value = command.vendeur || '';
+
+            const projectSelect = document.getElementById('editProject');
+            projectSelect.innerHTML = '<option value="">Aucun projet</option>';
+            projects.forEach(project => {
+                const selected = project.id === command.project_id ? 'selected' : '';
+                projectSelect.innerHTML += `<option value="${project.id}" ${selected}>${project.name}</option>`;
+            });
+
+            editModalInstance.show();
+        }
+
+        async function saveChanges() {
+            const commandId = parseInt(document.getElementById('editCommandId').value);
+            const command = allCommands.find(cmd => cmd.id === commandId);
+            if (!command) return;
+
+            const newClientFinalId = document.getElementById('editClientFinal').value || null;
+            const newRevendeur = document.getElementById('editRevendeur').value.trim() || null;
+            const newProjectId = document.getElementById('editProject').value || null;
+
+            const changes = [];
+            
+            // Détecter les changements
+            if (newClientFinalId != command.client_final_id) {
+                const oldClient = endUsers.find(u => u.id === command.client_final_id);
+                const newClient = endUsers.find(u => u.id == newClientFinalId);
+                changes.push({
+                    field_name: 'client_final_id',
+                    old_value: oldClient ? oldClient.company_name : 'Aucun',
+                    new_value: newClient ? newClient.company_name : 'Aucun'
+                });
+            }
+
+            if (newRevendeur !== command.vendeur) {
+                changes.push({
+                    field_name: 'vendeur',
+                    old_value: command.vendeur || 'Aucun',
+                    new_value: newRevendeur || 'Aucun'
+                });
+            }
+
+            if (newProjectId != command.project_id) {
+                const oldProject = projects.find(p => p.id === command.project_id);
+                const newProject = projects.find(p => p.id == newProjectId);
+                changes.push({
+                    field_name: 'project_id',
+                    old_value: oldProject ? oldProject.name : 'Aucun',
+                    new_value: newProject ? newProject.name : 'Aucun'
+                });
+            }
+
+            if (changes.length === 0) {
+                showToast('Aucune modification détectée', 'info');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                // Mettre à jour la commande
+                const { error: updateError } = await supabase
+                    .from('commandes_odoo')
+                    .update({
+                        client_final_id: newClientFinalId ? parseInt(newClientFinalId) : null,
+                        vendeur: newRevendeur,
+                        project_id: newProjectId ? parseInt(newProjectId) : null,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', commandId);
+
+                if (updateError) throw updateError;
+
+                // Enregistrer l'historique des modifications
+                for (const change of changes) {
+                    const { error: historyError } = await supabase
+                        .from('commandes_modifications_history')
+                        .insert({
+                            commande_id: commandId,
+                            field_name: change.field_name,
+                            old_value: change.old_value,
+                            new_value: change.new_value,
+                            modified_by: 'Admin', // À remplacer par l'utilisateur connecté
+                            modified_at: new Date().toISOString()
+                        });
+
+                    if (historyError) {
+                        console.error('Erreur enregistrement historique:', historyError);
+                    }
+                }
+
+                // Recharger les données
+                await loadCommands();
+                applyFilters();
+                
+                editModalInstance.hide();
+                showToast('Modifications enregistrées avec succès', 'success');
+
+            } catch (error) {
+                console.error('Erreur sauvegarde:', error);
+                showToast('Erreur lors de la sauvegarde: ' + error.message, 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function openHistoryModal(commandId) {
+            const command = allCommands.find(cmd => cmd.id === commandId);
+            if (!command) return;
+
+            document.getElementById('historyCommandRef').textContent = command.reference;
+            document.getElementById('historyContent').innerHTML = `
+                <div class="text-center py-3">
+                    <i class="fas fa-spinner fa-spin me-2"></i> Chargement de l'historique...
+                </div>
+            `;
+
+            historyModalInstance.show();
+
+            try {
+                const { data, error } = await supabase
+                    .from('commandes_modifications_history')
+                    .select('*')
+                    .eq('commande_id', commandId)
+                    .order('modified_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    document.getElementById('historyContent').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h5>Aucune modification</h5>
+                            <p>Cette commande n'a pas encore été modifiée.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const historyHtml = data.map(item => `
+                    <div class="history-item">
+                        <div class="history-date">
+                            <i class="fas fa-clock me-1"></i>
+                            ${formatDateTime(item.modified_at)}
+                        </div>
+                        <div class="history-change">
+                            <strong>${getFieldLabel(item.field_name)}</strong> modifié :
+                            <br>
+                            <span class="text-danger">« ${item.old_value} »</span>
+                            <i class="fas fa-arrow-right mx-2"></i>
+                            <span class="text-success">« ${item.new_value} »</span>
+                        </div>
+                        <div class="history-user">
+                            Par ${item.modified_by || 'Utilisateur inconnu'}
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('historyContent').innerHTML = `
+                    <div class="history-timeline">
+                        ${historyHtml}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erreur chargement historique:', error);
+                document.getElementById('historyContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur lors du chargement de l'historique
+                    </div>
+                `;
+            }
+        }
+
+        async function refreshData() {
+            showToast('Actualisation en cours...', 'info');
+            await loadAllData();
+            showToast('Données actualisées', 'success');
+        }
+
+        function getFieldLabel(fieldName) {
+            const labels = {
+                'client_final_id': 'Client final',
+                'vendeur': 'Revendeur',
+                'project_id': 'Projet'
+            };
+            return labels[fieldName] || fieldName;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR');
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
+        }
+
+        function formatCurrency(amount) {
+            if (!amount) return '0,00 €';
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Payé': 'success',
+                'En attente': 'warning',
+                'Impayé': 'danger',
+                'Partiel': 'info'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            statusEl.innerHTML = `<i class="fas fa-${status === 'connected' ? 'check' : status === 'connecting' ? 'spinner fa-spin' : 'exclamation-triangle'} me-1"></i> ${message}`;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed`;
+            toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px; animation: slideIn 0.3s ease;';
+            toast.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>${message}</span>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        // Recherche en temps réel
+        document.getElementById('searchGlobal').addEventListener('input', function() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => applyFilters(), 500);
+        });
+    </script>
+
+    <style>
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+</html>
