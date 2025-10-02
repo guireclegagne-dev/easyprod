@@ -790,12 +790,16 @@ async function loadResellerHistory(resellerId) {
                 throw new Error('Revendeur non trouvé');
             }
             
-            // Charger les commandes sans jointure
+            console.log('Recherche des commandes pour:', reseller.company_name);
+            
+            // Filtrer par le nom de l'entreprise
             const { data: orders, error } = await supabase
                 .from('commandes_odoo')
                 .select('*')
-                .eq('vendeur', reseller.company_name)
+                .eq('revendeur_id', reseller.company_name)  // ← Utiliser company_name
                 .order('date_commande', { ascending: false });
+            
+            console.log('Commandes trouvées:', orders);
             
             if (error) throw error;
             
@@ -810,7 +814,6 @@ async function loadResellerHistory(resellerId) {
                         .in('id', projectIds);
                     
                     if (!projError && projects) {
-                        // Associer les projets aux commandes
                         orders.forEach(order => {
                             order.projets = projects.find(p => p.id === order.project_id);
                         });
@@ -820,26 +823,8 @@ async function loadResellerHistory(resellerId) {
             
             displayHistory(orders);
         } else {
-            // Mode hors ligne - données d'exemple
-            const sampleOrders = [
-                {
-                    id: 1,
-                    reference: 'CMD-2024-001',
-                    date_commande: '2024-09-15',
-                    total_ttc: 15000,
-                    etat_facture: 'Payée',
-                    projets: { nom_projet: 'Projet Alpha', reference_projet: 'PROJ-001' }
-                },
-                {
-                    id: 2,
-                    reference: 'CMD-2024-002',
-                    date_commande: '2024-09-20',
-                    total_ttc: 8500,
-                    etat_facture: 'En attente',
-                    projets: { nom_projet: 'Projet Beta', reference_projet: 'PROJ-002' }
-                }
-            ];
-            displayHistory(sampleOrders);
+            // Mode hors ligne
+            displayHistory([]);
         }
     } catch (error) {
         console.error('Erreur chargement historique:', error);
