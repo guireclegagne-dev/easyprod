@@ -459,7 +459,6 @@
                 <div class="modal-body">
                     <form id="editForm">
                         <input type="hidden" id="editCommandId">
-                        
                         <div class="mb-3">
                             <label class="form-label">Client final</label>
                             <select class="form-select" id="editClientFinal">
@@ -467,12 +466,19 @@
                             </select>
                             <small class="text-muted">Sélectionnez le client final de la commande</small>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Revendeur</label>
+                            <select class="form-select" id="editRevendeurCompany">
+                                <option value="">Aucun revendeur</option>
+                            </select>
+                            <small class="text-muted">Sélectionnez le revendeur de la commande</small>
+                        </div>
 
                         <div class="mb-3">
                             <label class="form-label">Vendeur</label>
                             <input type="text" class="form-control" id="editRevendeur" 
-                                   placeholder="Nom du revendeur">
-                            <small class="text-muted">Sélectionnez le nom du Vendeur</small>
+                                placeholder="Nom du Vendeur">
+                            <small class="text-muted">Saisissez le nom du Vendeur</small>
                         </div>
 
                         <div class="mb-3">
@@ -539,7 +545,8 @@
         let filteredCommands = [];
         let endUsers = [];
         let projects = [];
-        let revendeurs = new Set();
+        let revendeurs = [];
+        let revendeursFromDB = [];  // Ajoutez cette nouvelle variable
         let editModalInstance;
         let historyModalInstance;
 
@@ -566,7 +573,8 @@
                 await Promise.all([
                     loadCommands(),
                     loadEndUsers(),
-                    loadProjects()
+                    loadProjects(),
+                    loadRevendeurs()  // Ajoutez cette ligne
                 ]);
                 populateFilters();
                 displayCommands();
@@ -626,7 +634,19 @@
                 projects = data || [];
             }
         }
+        async function loadRevendeurs() {
+            const { data, error } = await supabase
+                .from('revendeurs')
+                .select('*')
+                .order('company_name');
 
+            if (error) {
+                console.error('Erreur chargement revendeurs:', error);
+                revendeursFromDB = [];
+            } else {
+                revendeursFromDB = data || [];
+            }
+        }
         function populateFilters() {
             // Filtrer clients
             const clientSelect = document.getElementById('filterClient');
@@ -704,51 +724,51 @@
         }
 
         function displayCommands() {
-            const tbody = document.getElementById('commandsTableBody');
-            const emptyState = document.getElementById('emptyState');
+    const tbody = document.getElementById('commandsTableBody');
+    const emptyState = document.getElementById('emptyState');
 
-            if (filteredCommands.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.style.display = 'block';
-                return;
-            }
+    if (filteredCommands.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+    }
 
-            emptyState.style.display = 'none';
+    emptyState.style.display = 'none';
 
-            tbody.innerHTML = filteredCommands.map(cmd => {
-                const project = projects.find(p => p.id === cmd.project_id);
-                const client = endUsers.find(u => u.id === cmd.client_final_id);
+    tbody.innerHTML = filteredCommands.map(cmd => {
+        const project = projects.find(p => p.id === cmd.project_id);
+        const client = endUsers.find(u => u.id === cmd.client_final_id);
 
-                return `
-                    <tr>
-                        <td class="reference-cell">${cmd.reference || '-'}</td>
-                        <td>${formatDate(cmd.date_commande)}</td>
-                        <td>${cmd.client || '-'}</td>
-                        <td>
-                            ${client ? `<strong>${client.company_name}</strong>` : '-'}
-                        </td>
-                        <td>${cmd.vendeur || '-'}</td>
-                        <td>
-                            ${project ? `<span class="badge badge-projet">${project.name}</span>` : '-'}
-                        </td>
-                        <td class="amount-cell">${formatCurrency(cmd.total_ttc)}</td>
-                        <td>
-                            <span class="badge badge-status bg-${getStatusColor(cmd.etat_facture)}">
-                                ${cmd.etat_facture || 'N/A'}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-primary btn-action" onclick="openEditModal(${cmd.id})" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-info btn-action" onclick="openHistoryModal(${cmd.id})" title="Historique">
-                                <i class="fas fa-history"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        return `
+            <tr>
+                <td class="reference-cell">${cmd.reference || '-'}</td>
+                <td>${formatDate(cmd.date_commande)}</td>
+                <td>${cmd.revendeur_id || '-'}</td>
+                <td>
+                    ${client ? `<strong>${client.company_name}</strong>` : '-'}
+                </td>
+                <td>${cmd.vendeur || '-'}</td>
+                <td>
+                    ${project ? `<span class="badge badge-projet">${project.name}</span>` : '-'}
+                </td>
+                <td class="amount-cell">${formatCurrency(cmd.total_ttc)}</td>
+                <td>
+                    <span class="badge badge-status bg-${getStatusColor(cmd.etat_facture)}">
+                        ${cmd.etat_facture || 'N/A'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-primary btn-action" onclick="openEditModal(${cmd.id})" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-info btn-action" onclick="openHistoryModal(${cmd.id})" title="Historique">
+                        <i class="fas fa-history"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
         function updateStats() {
             document.getElementById('totalCommands').textContent = allCommands.length;
@@ -759,125 +779,146 @@
         }
 
         async function openEditModal(commandId) {
-            const command = allCommands.find(cmd => cmd.id === commandId);
-            if (!command) return;
+    const command = allCommands.find(cmd => cmd.id === commandId);
+    if (!command) return;
 
-            document.getElementById('editCommandId').value = commandId;
-            document.getElementById('editCommandRef').textContent = command.reference;
+    document.getElementById('editCommandId').value = commandId;
+    document.getElementById('editCommandRef').textContent = command.reference;
 
-            // Remplir les selects
-            const clientSelect = document.getElementById('editClientFinal');
-            clientSelect.innerHTML = '<option value="">Aucun client</option>';
-            endUsers.forEach(user => {
-                const selected = user.id === command.client_final_id ? 'selected' : '';
-                clientSelect.innerHTML += `<option value="${user.id}" ${selected}>${user.company_name}</option>`;
-            });
+    // Remplir le select client final
+    const clientSelect = document.getElementById('editClientFinal');
+    clientSelect.innerHTML = '<option value="">Aucun client</option>';
+    endUsers.forEach(user => {
+        const selected = user.id === command.client_final_id ? 'selected' : '';
+        clientSelect.innerHTML += `<option value="${user.id}" ${selected}>${user.company_name}</option>`;
+    });
 
-            document.getElementById('editRevendeur').value = command.vendeur || '';
+    // Remplir le select revendeur - MODIFIÉ ICI
+    const revendeurCompanySelect = document.getElementById('editRevendeurCompany');
+    revendeurCompanySelect.innerHTML = '<option value="">Aucun revendeur</option>';
+    revendeursFromDB.forEach(revendeur => {
+        // Comparer avec company_name au lieu de id
+        const selected = revendeur.company_name === command.revendeur_id ? 'selected' : '';
+        revendeurCompanySelect.innerHTML += `<option value="${revendeur.company_name}" ${selected}>${revendeur.company_name}</option>`;
+    });
 
-            const projectSelect = document.getElementById('editProject');
-            projectSelect.innerHTML = '<option value="">Aucun projet</option>';
-            projects.forEach(project => {
-                const selected = project.id === command.project_id ? 'selected' : '';
-                projectSelect.innerHTML += `<option value="${project.id}" ${selected}>${project.name}</option>`;
-            });
+    document.getElementById('editRevendeur').value = command.vendeur || '';
 
-            editModalInstance.show();
-        }
+    const projectSelect = document.getElementById('editProject');
+    projectSelect.innerHTML = '<option value="">Aucun projet</option>';
+    projects.forEach(project => {
+        const selected = project.id === command.project_id ? 'selected' : '';
+        projectSelect.innerHTML += `<option value="${project.id}" ${selected}>${project.name}</option>`;
+    });
+
+    editModalInstance.show();
+}
 
         async function saveChanges() {
-            const commandId = parseInt(document.getElementById('editCommandId').value);
-            const command = allCommands.find(cmd => cmd.id === commandId);
-            if (!command) return;
+    const commandId = parseInt(document.getElementById('editCommandId').value);
+    const command = allCommands.find(cmd => cmd.id === commandId);
+    if (!command) return;
 
-            const newClientFinalId = document.getElementById('editClientFinal').value || null;
-            const newRevendeur = document.getElementById('editRevendeur').value.trim() || null;
-            const newProjectId = document.getElementById('editProject').value || null;
+    const newClientFinalId = document.getElementById('editClientFinal').value || null;
+    const newRevendeurId = document.getElementById('editRevendeurCompany').value || null; // C'est maintenant un nom
+    const newVendeur = document.getElementById('editRevendeur').value.trim() || null;
+    const newProjectId = document.getElementById('editProject').value || null;
 
-            const changes = [];
-            
-            // Détecter les changements
-            if (newClientFinalId != command.client_final_id) {
-                const oldClient = endUsers.find(u => u.id === command.client_final_id);
-                const newClient = endUsers.find(u => u.id == newClientFinalId);
-                changes.push({
-                    field_name: 'client_final_id',
-                    old_value: oldClient ? oldClient.company_name : 'Aucun',
-                    new_value: newClient ? newClient.company_name : 'Aucun'
+    const changes = [];
+    
+    // Détecter les changements
+    if (newClientFinalId != command.client_final_id) {
+        const oldClient = endUsers.find(u => u.id === command.client_final_id);
+        const newClient = endUsers.find(u => u.id == newClientFinalId);
+        changes.push({
+            field_name: 'client_final_id',
+            old_value: oldClient ? oldClient.company_name : 'Aucun',
+            new_value: newClient ? newClient.company_name : 'Aucun'
+        });
+    }
+
+    // Détecter changement revendeur - CORRIGÉ ICI
+    if (newRevendeurId != command.revendeur_id) {
+        changes.push({
+            field_name: 'revendeur_id',
+            old_value: command.revendeur_id || 'Aucun',
+            new_value: newRevendeurId || 'Aucun'
+        });
+    }
+
+    // Détecter changement vendeur
+    if (newVendeur !== command.vendeur) {
+        changes.push({
+            field_name: 'vendeur',
+            old_value: command.vendeur || 'Aucun',
+            new_value: newVendeur || 'Aucun'
+        });
+    }
+
+    if (newProjectId != command.project_id) {
+        const oldProject = projects.find(p => p.id === command.project_id);
+        const newProject = projects.find(p => p.id == newProjectId);
+        changes.push({
+            field_name: 'project_id',
+            old_value: oldProject ? oldProject.name : 'Aucun',
+            new_value: newProject ? newProject.name : 'Aucun'
+        });
+    }
+
+    if (changes.length === 0) {
+        showToast('Aucune modification détectée', 'info');
+        return;
+    }
+
+    showLoading(true);
+
+    try {
+        // Mettre à jour la commande - CORRIGÉ ICI
+        const { error: updateError } = await supabase
+            .from('commandes_odoo')
+            .update({
+                client_final_id: newClientFinalId ? parseInt(newClientFinalId) : null,
+                revendeur_id: newRevendeurId, // On enregistre le nom directement, pas parseInt
+                vendeur: newVendeur,
+                project_id: newProjectId ? parseInt(newProjectId) : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', commandId);
+
+        if (updateError) throw updateError;
+
+        // Enregistrer l'historique des modifications
+        for (const change of changes) {
+            const { error: historyError } = await supabase
+                .from('commandes_modifications_history')
+                .insert({
+                    commande_id: commandId,
+                    field_name: change.field_name,
+                    old_value: change.old_value,
+                    new_value: change.new_value,
+                    modified_by: 'Admin',
+                    modified_at: new Date().toISOString()
                 });
-            }
 
-            if (newRevendeur !== command.vendeur) {
-                changes.push({
-                    field_name: 'vendeur',
-                    old_value: command.vendeur || 'Aucun',
-                    new_value: newRevendeur || 'Aucun'
-                });
-            }
-
-            if (newProjectId != command.project_id) {
-                const oldProject = projects.find(p => p.id === command.project_id);
-                const newProject = projects.find(p => p.id == newProjectId);
-                changes.push({
-                    field_name: 'project_id',
-                    old_value: oldProject ? oldProject.name : 'Aucun',
-                    new_value: newProject ? newProject.name : 'Aucun'
-                });
-            }
-
-            if (changes.length === 0) {
-                showToast('Aucune modification détectée', 'info');
-                return;
-            }
-
-            showLoading(true);
-
-            try {
-                // Mettre à jour la commande
-                const { error: updateError } = await supabase
-                    .from('commandes_odoo')
-                    .update({
-                        client_final_id: newClientFinalId ? parseInt(newClientFinalId) : null,
-                        vendeur: newRevendeur,
-                        project_id: newProjectId ? parseInt(newProjectId) : null,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', commandId);
-
-                if (updateError) throw updateError;
-
-                // Enregistrer l'historique des modifications
-                for (const change of changes) {
-                    const { error: historyError } = await supabase
-                        .from('commandes_modifications_history')
-                        .insert({
-                            commande_id: commandId,
-                            field_name: change.field_name,
-                            old_value: change.old_value,
-                            new_value: change.new_value,
-                            modified_by: 'Admin', // À remplacer par l'utilisateur connecté
-                            modified_at: new Date().toISOString()
-                        });
-
-                    if (historyError) {
-                        console.error('Erreur enregistrement historique:', historyError);
-                    }
-                }
-
-                // Recharger les données
-                await loadCommands();
-                applyFilters();
-                
-                editModalInstance.hide();
-                showToast('Modifications enregistrées avec succès', 'success');
-
-            } catch (error) {
-                console.error('Erreur sauvegarde:', error);
-                showToast('Erreur lors de la sauvegarde: ' + error.message, 'danger');
-            } finally {
-                showLoading(false);
+            if (historyError) {
+                console.error('Erreur enregistrement historique:', historyError);
             }
         }
+
+        // Recharger les données
+        await loadCommands();
+        applyFilters();
+        
+        editModalInstance.hide();
+        showToast('Modifications enregistrées avec succès', 'success');
+
+    } catch (error) {
+        console.error('Erreur sauvegarde:', error);
+        showToast('Erreur lors de la sauvegarde: ' + error.message, 'danger');
+    } finally {
+        showLoading(false);
+    }
+}
 
         async function openHistoryModal(commandId) {
             const command = allCommands.find(cmd => cmd.id === commandId);
@@ -957,7 +998,8 @@
         function getFieldLabel(fieldName) {
             const labels = {
                 'client_final_id': 'Client final',
-                'vendeur': 'Revendeur',
+                'revendeur_id': 'Revendeur',  // AJOUTEZ CETTE LIGNE
+                'vendeur': 'Vendeur',
                 'project_id': 'Projet'
             };
             return labels[fieldName] || fieldName;
