@@ -820,7 +820,7 @@
     if (!command) return;
 
     const newClientFinalId = document.getElementById('editClientFinal').value || null;
-    const newRevendeurId = document.getElementById('editRevendeurCompany').value || null; // C'est maintenant un nom
+    const newRevendeurId = document.getElementById('editRevendeurCompany').value || null;
     const newVendeur = document.getElementById('editRevendeur').value.trim() || null;
     const newProjectId = document.getElementById('editProject').value || null;
 
@@ -837,11 +837,20 @@
         });
     }
 
-    // Détecter changement revendeur - CORRIGÉ ICI
+    // Détecter changement revendeur
     if (newRevendeurId != command.revendeur_id) {
         changes.push({
             field_name: 'revendeur_id',
             old_value: command.revendeur_id || 'Aucun',
+            new_value: newRevendeurId || 'Aucun'
+        });
+    }
+
+    // AJOUT : Détecter changement dans la colonne client
+    if (newRevendeurId != command.client) {
+        changes.push({
+            field_name: 'client',
+            old_value: command.client || 'Aucun',
             new_value: newRevendeurId || 'Aucun'
         });
     }
@@ -873,12 +882,13 @@
     showLoading(true);
 
     try {
-        // Mettre à jour la commande - CORRIGÉ ICI
+        // Mettre à jour la commande - AJOUT de client
         const { error: updateError } = await supabase
             .from('commandes_odoo')
             .update({
                 client_final_id: newClientFinalId ? parseInt(newClientFinalId) : null,
-                revendeur_id: newRevendeurId, // On enregistre le nom directement, pas parseInt
+                revendeur_id: newRevendeurId,
+                client: newRevendeurId,  // ← AJOUT ICI
                 vendeur: newVendeur,
                 project_id: newProjectId ? parseInt(newProjectId) : null,
                 updated_at: new Date().toISOString()
@@ -886,6 +896,8 @@
             .eq('id', commandId);
 
         if (updateError) throw updateError;
+
+        // ... reste du code inchangé
 
         // Enregistrer l'historique des modifications
         for (const change of changes) {
