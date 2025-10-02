@@ -282,7 +282,17 @@
         .action-btn.delete {
             color: var(--danger-color);
         }
+        .action-btn.edit {
+            color: var(--info-color);
+        }
 
+        .action-btn.delete {
+            color: var(--danger-color);
+        }
+
+.action-btn.history {
+    color: var(--manager-color);
+}
         .modal-content {
             border-radius: 15px;
             border: none;
@@ -483,7 +493,7 @@
                                 <i class="fas fa-euro-sign"></i>
                             </div>
                             <div class="stat-value" id="totalRevenue">-</div>
-                            <div class="stat-label">CA TOP 10 Revendeurs (k€)</div>
+                            <div class="stat-label">TOP 10 Revendeurs</div>
                         </div>
                     </div>
                 </div>
@@ -708,7 +718,32 @@
             </div>
         </div>
     </div>
-
+<!-- Modal Historique Commandes -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="historyModalTitle">
+                    <i class="fas fa-history me-2"></i>Historique des commandes
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="historyContent">
+                    <div class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-3 text-muted">Chargement de l'historique...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="config.js"></script>
     <script>
@@ -729,7 +764,233 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
             initApp();
             setupSearchFilter();
         });
+        async function showResellerHistory(resellerId) {
+    const reseller = resellers.find(r => r.id === resellerId);
+    if (!reseller) return;
+    
+    // Mettre à jour le titre du modal
+    document.getElementById('historyModalTitle').innerHTML = 
+        `<i class="fas fa-history me-2"></i>Historique des commandes - ${reseller.company_name}`;
+    
+    // Afficher le modal
+    const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+    modal.show();
+    
+    // Charger l'historique
+    await loadResellerHistory(resellerId);
+}
 
+async function loadResellerHistory(resellerId) {
+    const contentDiv = document.getElementById('historyContent');
+    
+    try {
+        if (supabaseLoaded) {
+            const reseller = resellers.find(r => r.id === resellerId);
+            if (!reseller) {
+                throw new Error('Revendeur non trouvé');
+            }
+            
+            // Charger les commandes sans jointure
+            const { data: orders, error } = await supabase
+                .from('commandes_odoo')
+                .select('*')
+                .eq('vendeur', reseller.company_name)
+                .order('date_commande', { ascending: false });
+            
+            if (error) throw error;
+            
+            // Si des commandes existent, charger les projets séparément
+            if (orders && orders.length > 0) {
+                const projectIds = [...new Set(orders.map(o => o.project_id).filter(id => id))];
+                
+                if (projectIds.length > 0) {
+                    const { data: projects, error: projError } = await supabase
+                        .from('projets')
+                        .select('*')
+                        .in('id', projectIds);
+                    
+                    if (!projError && projects) {
+                        // Associer les projets aux commandes
+                        orders.forEach(order => {
+                            order.projets = projects.find(p => p.id === order.project_id);
+                        });
+                    }
+                }
+            }
+            
+            displayHistory(orders);
+        } else {
+            // Mode hors ligne - données d'exemple
+            const sampleOrders = [
+                {
+                    id: 1,
+                    reference: 'CMD-2024-001',
+                    date_commande: '2024-09-15',
+                    total_ttc: 15000,
+                    etat_facture: 'Payée',
+                    projets: { nom_projet: 'Projet Alpha', reference_projet: 'PROJ-001' }
+                },
+                {
+                    id: 2,
+                    reference: 'CMD-2024-002',
+                    date_commande: '2024-09-20',
+                    total_ttc: 8500,
+                    etat_facture: 'En attente',
+                    projets: { nom_projet: 'Projet Beta', reference_projet: 'PROJ-002' }
+                }
+            ];
+            displayHistory(sampleOrders);
+        }
+    } catch (error) {
+        console.error('Erreur chargement historique:', error);
+        contentDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Erreur lors du chargement de l'historique: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function displayHistory(orders) {
+    const contentDiv = document.getElementById('historyContent');
+    
+    if (!orders || orders.length === 0) {
+        contentDiv.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-shopping-cart"></i>
+                <h5>Aucune commande</h5>
+                <p>Ce revendeur n'a pas encore passé de commande.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Grouper les commandes par projet
+    const ordersByProject = {};
+    orders.forEach(order => {
+        const projectKey = order.projets?.reference_projet || 'SANS_PROJET';
+        if (!ordersByProject[projectKey]) {
+            ordersByProject[projectKey] = {
+                projectName: order.projets?.nom_projet || 'Sans projet',
+                projectRef: projectKey,
+                orders: []
+            };
+        }
+        ordersByProject[projectKey].orders.push(order);
+    });
+    
+    // Générer le HTML
+    let html = '<div class="accordion" id="historyAccordion">';
+    
+    Object.keys(ordersByProject).forEach((projectKey, index) => {
+        const project = ordersByProject[projectKey];
+        const totalAmount = project.orders.reduce((sum, o) => sum + (parseFloat(o.total_ttc) || 0), 0);
+        
+        html += `
+            <div class="accordion-item mb-3" style="border-radius: 10px; border: 1px solid #e9ecef;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#project${index}">
+                        <div class="w-100 d-flex justify-content-between align-items-center pe-3">
+                            <div>
+                                <i class="fas fa-folder-open me-2 text-primary"></i>
+                                <strong>${project.projectName}</strong>
+                                <span class="badge bg-secondary ms-2">${project.orders.length} commande(s)</span>
+                            </div>
+                            <div class="text-end">
+                                <strong class="text-success">${formatCurrency(totalAmount)}</strong>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="project${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                     data-bs-parent="#historyAccordion">
+                    <div class="accordion-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Référence</th>
+                                        <th>Client</th>
+                                        <th>Date</th>
+                                        <th>Montant TTC</th>
+                                        <th>État Facture</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${project.orders.map(order => `
+                                        <tr>
+                                            <td><strong>${order.reference || '-'}</strong></td>
+                                            <td>${order.client || '-'}</td>
+                                            <td>${formatDate(order.date_commande)}</td>
+                                            <td><strong>${formatCurrency(parseFloat(order.total_ttc) || 0)}</strong></td>
+                                            <td>${getFactureStatusBadge(order.etat_facture)}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        onclick="viewOrderDetails(${order.id})">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    contentDiv.innerHTML = html;
+}
+
+function getFactureStatusBadge(status) {
+    const statusConfig = {
+        'Payée': { class: 'success', icon: 'check-circle' },
+        'En attente': { class: 'warning', icon: 'clock' },
+        'Brouillon': { class: 'secondary', icon: 'file' },
+        'Annulée': { class: 'danger', icon: 'times-circle' }
+    };
+    
+    const config = statusConfig[status] || { class: 'info', icon: 'question-circle' };
+    return `<span class="badge bg-${config.class}">
+        <i class="fas fa-${config.icon} me-1"></i>${status || 'Non défini'}
+    </span>`;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+    });
+}
+
+function getStatusBadge(status) {
+    const statusConfig = {
+        'Livrée': { class: 'success', icon: 'check-circle' },
+        'En cours': { class: 'warning', icon: 'clock' },
+        'En attente': { class: 'info', icon: 'hourglass-half' },
+        'Annulée': { class: 'danger', icon: 'times-circle' }
+    };
+    
+    const config = statusConfig[status] || { class: 'secondary', icon: 'question-circle' };
+    return `<span class="badge bg-${config.class}">
+        <i class="fas fa-${config.icon} me-1"></i>${status}
+    </span>`;
+}
+
+function viewOrderDetails(orderId) {
+    // À implémenter selon votre logique
+    console.log('Afficher détails commande:', orderId);
+    alert('Fonction à implémenter: afficher les détails de la commande #' + orderId);
+}
         async function initApp() {
             updateConnectionStatus('connecting', 'Connexion...');
             await loadSupabase();
@@ -958,6 +1219,16 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
                         </span>
                     </td>
                     <td>
+                        <button class="action-btn edit" onclick="event.stopPropagation(); editReseller(${reseller.id})" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="event.stopPropagation(); deleteReseller(${reseller.id})" title="Supprimer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <td>
+                        <button class="action-btn history" onclick="event.stopPropagation(); showResellerHistory(${reseller.id})" title="Historique des commandes">
+                            <i class="fas fa-history"></i>
+                        </button>
                         <button class="action-btn edit" onclick="event.stopPropagation(); editReseller(${reseller.id})" title="Modifier">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -1258,8 +1529,4 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE.ANON_KEY;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
-
 </html>
-
-
-
