@@ -1166,30 +1166,45 @@
                     .is('ended_at', null);
 
                 if (!usersError && allUsers && !activeTasksError) {
+                    console.log('=== DEBUT DEBUG ===');
+                    console.log('Tous les utilisateurs récupérés:', allUsers);
+                    console.log('Nombre d\'utilisateurs:', allUsers.length);
+    
                     const activeOperators = new Set();
-                    if (activeTasks) {
-                        activeTasks.forEach(task => {
-                            if (task.operator_name) {
-                                activeOperators.add(task.operator_name);
-                            }
-                        });
-                    }
+                if (activeTasks) {
+                    console.log('Tâches actives trouvées:', activeTasks);
+                    activeTasks.forEach(task => {
+                if (task.operator_name) {
+                activeOperators.add(task.operator_name);
+                console.log('Opérateur actif trouvé:', task.operator_name);
+            }
+        });
+    }
+    
+                console.log('Set des opérateurs actifs:', Array.from(activeOperators));
 
-                    allUsers.forEach(user => {
-                        const userName = user.first_name && user.last_name 
-                            ? `${user.first_name} ${user.last_name}` 
-                            : user.name || 'Utilisateur inconnu';
-                        
-                        if (!activeOperators.has(userName)) {
-                            totalAnomalies++;
-                            anomaliesDetails.push({
-                                type: 'Opérateur inactif',
-                                description: userName,
-                                id: user.id,
-                                category: 'inactive_operator'
-                            });
-                        }
+                allUsers.forEach(user => {
+                    const userName = user.first_name && user.last_name 
+                        ? `${user.first_name} ${user.last_name}` 
+                        : user.name || 'Utilisateur inconnu';
+        
+                    console.log(`Vérification de "${userName}":`, {
+                        dansSET: activeOperators.has(userName),
+                        userId: user.id
                     });
+        
+                    if (!activeOperators.has(userName)) {
+                        totalAnomalies++;
+                        anomaliesDetails.push({
+                            type: 'Opérateur inactif',
+                            description: userName,
+                            id: user.id,
+                            category: 'inactive_operator'
+                    });
+                }
+            });
+    
+                    console.log('=== FIN DEBUG ===');
                 }
 
                 const yesterday = new Date();
@@ -1369,7 +1384,18 @@
                 return false;
             }
         }
-
+        function dismissAnomaly(anomalyIndex) {
+         // Mise à jour optimiste immédiate
+            updateLocalAnomalies(anomalyIndex, 'remove');
+            refreshWidgetDisplay();
+    
+            // Message de confirmation
+            console.log('Alerte ignorée localement');
+    
+            // Note : Cette suppression est uniquement locale (en mémoire)
+            // L'alerte réapparaîtra au prochain rechargement de la page
+            // si la tâche n'a toujours pas été terminée
+        }
         // Interface pour les actions d'anomalies
         function showActionForm(anomalyIndex, actionType) {
             hideAllActionForms();
@@ -1709,7 +1735,48 @@
                 showError(anomalyIndex, 'Erreur lors de la réassignation');
             }
         }
-
+        async function dismissAnomaly(anomalyIndex) {
+    const anomaly = widgetData[4].anomalies[anomalyIndex];
+    
+    if (!confirm('Voulez-vous vraiment annuler cette tâche ? Elle sera marquée comme terminée avec une quantité de 0.')) {
+        return;
+    }
+    
+    try {
+        // Annuler la tâche en la marquant comme terminée immédiatement
+        const { error } = await supabase
+            .from('tasks')
+            .update({ 
+                ended_at: anomaly.started_at,  // Même heure que le début = durée 0
+                quantity: 0                     // Quantité à 0 pour indiquer l'annulation
+            })
+            .eq('id', anomaly.id);
+        
+        if (error) throw error;
+        
+        // Mise à jour optimiste immédiate
+        updateLocalAnomalies(anomalyIndex, 'remove');
+        refreshWidgetDisplay();
+        
+        console.log('Tâche annulée avec succès');
+        
+        // Vérification différée pour garantir la cohérence
+        setTimeout(async () => {
+            await loadWidget4_Anomalies();
+        }, 1500);
+        
+        // Fallback en cas d'échec de synchronisation
+        setTimeout(async () => {
+            if (isAnomalyStillPresent(anomaly)) {
+                await loadWidget4_Anomalies();
+            }
+        }, 5000);
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'annulation de la tâche:', error);
+        alert('Erreur lors de l\'annulation de la tâche. Veuillez réessayer.');
+    }
+}
         // Fonctions d'aide pour la mise à jour optimiste
         function updateLocalAnomalies(anomalyIndex, action) {
             if (action === 'remove') {
@@ -2094,11 +2161,12 @@
                                     <button class="btn-action btn-fix" onclick="showActionForm(${index}, 'complete')" title="Marquer terminée">
                                         <i class="fas fa-check me-1"></i>Terminer
                                     </button>
-                                    <button class="btn-action btn-reassign" onclick="showActionForm(${index}, 'reassign')" title="Réassigner">
-                                        <i class="fas fa-exchange-alt me-1"></i>Réassigner
+                                    <button class="btn-action btn-disable" onclick="dismissAnomaly(${index})" title="Ignorer cette alerte">
+                                        <i class="fas fa-times me-1"></i>Ignorer
                                     </button>
                                 `;
                             }
+                            
                             
                             html += `
                                         </div>
@@ -2136,6 +2204,3 @@
 </body>
 
 </html>
-
-
-
