@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       .from('users')
       .select('id, first_name, last_name, name, is_active')
       .eq('is_active', true)
+      .not('role', 'in', '("Administrateur","Super Administrateur")')
       .order('first_name');
     
     if (error) throw error;
