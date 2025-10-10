@@ -1156,7 +1156,7 @@
                 const { data: allUsers, error: usersError } = await supabase
                     .from('users')
                     .select('first_name, last_name, name, id')
-                    .eq('is_active', true);
+                    .eq('is_active', true)
                     .not('role', 'in', '("Administrateur","Super Administrateur")');
 
                 const { data: activeTasks, error: activeTasksError } = await supabase
@@ -2136,5 +2136,6 @@
 </body>
 
 </html>
+
 
 
