@@ -1157,6 +1157,7 @@
                     .from('users')
                     .select('first_name, last_name, name, id')
                     .eq('is_active', true);
+                    .not('role', 'in', '("Administrateur","Super Administrateur")');
 
                 const { data: activeTasks, error: activeTasksError } = await supabase
                     .from('tasks')
@@ -2135,4 +2136,5 @@
 </body>
 
 </html>
+
 
